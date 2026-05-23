@@ -28,4 +28,20 @@
     <string name="widget_status_passed">Passed</string>
     <string name="widget_status_failed">Failed</string>
     <string name="widget_status_ongoing">Ongoing</string>
+
+    <string name="update_section_title">App version</string>
+    <string name="update_check_button">Check for update</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_current_label">Current: %1$s</string>
+    <string name="update_dialog_title_new">Update available</string>
+    <string name="update_dialog_title_uptodate">Up to date</string>
+    <string name="update_dialog_uptodate_body">You are on the latest version (%1$s).</string>
+    <string name="update_size_label">Size: %1$s</string>
+    <string name="update_download_button">Download</string>
+    <string name="update_open_release">Open release</string>
+    <string name="update_dismiss">Close</string>
+    <string name="update_downloading">Downloading… %1$d%%</string>
+    <string name="update_download_failed">Download failed (reason %1$d)</string>
+    <string name="update_check_failed">Couldn\'t check: %1$s</string>
+    <string name="update_install_button">Install</string>
 </resources>
