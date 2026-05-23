@@ -16,6 +16,7 @@ captures/
 .DS_Store
 Thumbs.db
 
-# Keystores
+# Keystores — release keystores never; debug keystore is committed so updates work.
 *.jks
 *.keystore
+!app/debug.keystore
