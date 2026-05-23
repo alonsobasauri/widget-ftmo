@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FTMO Widget</string>
+    <string name="widget_label">FTMO MetriX</string>
+    <string name="widget_description">Monitor your FTMO challenge results on the home screen.</string>
+
+    <string name="config_title">Configure FTMO widget</string>
+    <string name="config_instructions">Paste the public MetriX share URL from FTMO.</string>
+    <string name="config_url_hint">https://trader.ftmo.com/live-metrix/…/share/…</string>
+    <string name="config_save">Save</string>
+    <string name="config_test">Test connection</string>
+    <string name="config_invalid_url">Couldn\'t find a login and share id in that URL.</string>
+    <string name="config_test_ok">Connection OK · %1$s</string>
+    <string name="config_test_fail">Test failed: %1$s</string>
+
+    <string name="widget_tap_to_configure">Tap to configure</string>
+    <string name="widget_loading">Loading…</string>
+    <string name="widget_error">Error</string>
+    <string name="widget_retry">Retry</string>
+    <string name="widget_balance">Balance</string>
+    <string name="widget_equity">Equity</string>
+    <string name="widget_today">Today</string>
+    <string name="widget_profit_target">Profit Target</string>
+    <string name="widget_max_daily_loss">Max Daily Loss</string>
+    <string name="widget_max_loss">Max Loss</string>
+    <string name="widget_daily_summary">Daily Summary</string>
+    <string name="widget_status_active">Active</string>
+    <string name="widget_status_passed">Passed</string>
+    <string name="widget_status_failed">Failed</string>
+    <string name="widget_status_ongoing">Ongoing</string>
+</resources>
