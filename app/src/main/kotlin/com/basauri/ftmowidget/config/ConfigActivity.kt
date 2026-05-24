@@ -72,7 +72,7 @@ class ConfigActivity : ComponentActivity() {
         }
         setResult(Activity.RESULT_OK, resultIntent)
         lifecycleScope.launch {
-            RefreshWorker.schedulePeriodic(this@ConfigActivity)
+            RefreshWorker.scheduleRecurring(this@ConfigActivity)
             RefreshWorker.requestImmediate(this@ConfigActivity)
             finish()
         }

@@ -13,7 +13,7 @@ class FtmoWidgetReceiver : GlanceAppWidgetReceiver() {
 
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
-        RefreshWorker.schedulePeriodic(context)
+        RefreshWorker.scheduleRecurring(context)
         RefreshWorker.requestImmediate(context)
     }
 
