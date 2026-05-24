@@ -34,6 +34,7 @@ import com.basauri.ftmowidget.data.Format
 import com.basauri.ftmowidget.data.Money
 import com.basauri.ftmowidget.data.Objective
 import com.basauri.ftmowidget.data.WidgetSnapshot
+import com.basauri.ftmowidget.data.progressRatio
 
 @Composable
 fun UnconfiguredCard() {
@@ -191,9 +192,7 @@ fun ObjectiveRow(
     currency: String?,
     trackWidth: androidx.compose.ui.unit.Dp,
 ) {
-    val pct = objective?.percentage?.let {
-        if (it.type == "fraction") it.value else it.value / 100.0
-    } ?: 0.0
+    val pct = objective?.progressRatio ?: 0.0
     val color = when (objective?.status?.lowercase()) {
         "passed" -> WidgetTheme.Success
         "notpassed", "not_passed" -> WidgetTheme.Danger
@@ -313,15 +312,10 @@ fun BidirectionalScale(pct: Float, trackHalfWidth: androidx.compose.ui.unit.Dp =
 @Composable
 fun ProfitTargetRow(objective: Objective?, currency: String?, trackHalfWidth: androidx.compose.ui.unit.Dp) {
     val context = LocalContext.current
-    val pct = objective?.percentage?.let {
-        if (it.type == "fraction") it.value else it.value / 100.0
-    } ?: 0.0
+    val ratio = objective?.progressRatio ?: 0.0
     val resultText = Format.money(objective?.result?.amount, currency, withSign = true)
     val limitText = Format.money(objective?.limit?.amount, currency)
-    val pctText = if (pct != 0.0) {
-        val sign = if (pct > 0) "+" else ""
-        "  $sign${(pct * 100).toInt()}%"
-    } else ""
+    val pctText = "  ${if (ratio > 0) "+" else ""}${(ratio * 100).toInt()}%"
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(text = context.getString(R.string.widget_profit_target), style = WidgetTheme.titleStyle())
@@ -336,7 +330,7 @@ fun ProfitTargetRow(objective: Objective?, currency: String?, trackHalfWidth: an
             )
         }
         Spacer(GlanceModifier.height(4.dp))
-        BidirectionalScale(pct = pct.toFloat(), trackHalfWidth = trackHalfWidth)
+        BidirectionalScale(pct = ratio.toFloat(), trackHalfWidth = trackHalfWidth)
     }
 }
 
@@ -352,10 +346,7 @@ fun BufferRow(
     currency: String?,
     trackWidth: androidx.compose.ui.unit.Dp,
 ) {
-    val pct = objective?.percentage?.let {
-        if (it.type == "fraction") it.value else it.value / 100.0
-    } ?: 0.0
-    val pctAbs = kotlin.math.abs(pct).toFloat().coerceIn(0f, 1f)
+    val pctAbs = kotlin.math.abs(objective?.progressRatio ?: 0.0).toFloat().coerceIn(0f, 1f)
     val color = when {
         pctAbs < 0.6f -> WidgetTheme.Success
         pctAbs < 0.85f -> WidgetTheme.Warning

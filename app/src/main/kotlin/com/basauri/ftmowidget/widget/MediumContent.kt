@@ -22,6 +22,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.basauri.ftmowidget.R
 import com.basauri.ftmowidget.data.WidgetSnapshot
+import com.basauri.ftmowidget.data.overallMaxLoss
 
 @Composable
 fun MediumContent(state: WidgetState) {
@@ -95,7 +96,7 @@ private fun MediumContentBody(snapshot: WidgetSnapshot, staleNote: String?, refr
         Spacer(GlanceModifier.height(6.dp))
         ObjectiveRow(
             label = context.getString(R.string.widget_max_loss),
-            objective = objectives.maxLoss ?: objectives.maxMidnightBalanceMaxLoss,
+            objective = objectives.overallMaxLoss,
             currency = currency,
             trackWidth = 200.dp,
         )

@@ -125,6 +125,33 @@ data class ObjectiveValue(
     }
 }
 
+/** True when the objective carries usable numeric limit and result. */
+val Objective.hasData: Boolean
+    get() = limit?.amount != null && result?.amount != null
+
+/**
+ * Signed result/limit ratio. For the profit target this is the fraction of the
+ * target reached (negative while equity is below the starting balance); for the
+ * loss caps it is the fraction of the buffer consumed (positive, since result and
+ * limit share the same sign). This is the correct basis for the progress bars —
+ * the API's `percentage` field is loss/gain as a percent of the initial balance,
+ * not progress toward the objective.
+ */
+val Objective.progressRatio: Double
+    get() {
+        val l = limit?.amount ?: return 0.0
+        val r = result?.amount ?: return 0.0
+        return if (l == 0.0) 0.0 else r / l
+    }
+
+/**
+ * FTMO exposes the overall loss cap either as `maxLoss` or, when that is
+ * "ineligible" for the account type, as `maxMidnightBalanceMaxLoss`. Pick
+ * whichever actually carries data.
+ */
+val Objectives.overallMaxLoss: Objective?
+    get() = maxLoss?.takeIf { it.hasData } ?: maxMidnightBalanceMaxLoss
+
 @Serializable
 data class DailyEntry(
     val date: String,

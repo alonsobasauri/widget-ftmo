@@ -25,6 +25,7 @@ import com.basauri.ftmowidget.R
 import com.basauri.ftmowidget.data.DailyEntry
 import com.basauri.ftmowidget.data.Format
 import com.basauri.ftmowidget.data.WidgetSnapshot
+import com.basauri.ftmowidget.data.overallMaxLoss
 
 @Composable
 fun XLargeContent(state: WidgetState) {
@@ -148,7 +149,7 @@ private fun ObjectivesSection(snapshot: WidgetSnapshot) {
         Spacer(GlanceModifier.height(6.dp))
         BufferRow(
             label = context.getString(R.string.widget_max_loss),
-            objective = objectives.maxLoss ?: objectives.maxMidnightBalanceMaxLoss,
+            objective = objectives.overallMaxLoss,
             currency = currency,
             trackWidth = 240.dp,
         )
