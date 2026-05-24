@@ -31,14 +31,14 @@ fun LargeContent(state: WidgetState) {
         WidgetState.Unconfigured -> UnconfiguredCard()
         WidgetState.Loading -> LoadingCard()
         is WidgetState.Error -> if (state.cached != null) {
-            LargeContentBody(state.cached, staleNote = state.message)
+            LargeContentBody(state.cached, staleNote = state.message, refreshing = state.refreshing)
         } else ErrorCard(state.message)
-        is WidgetState.Ready -> LargeContentBody(state.snapshot, staleNote = null)
+        is WidgetState.Ready -> LargeContentBody(state.snapshot, staleNote = null, refreshing = state.refreshing)
     }
 }
 
 @Composable
-private fun LargeContentBody(snapshot: WidgetSnapshot, staleNote: String?) {
+private fun LargeContentBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing: Boolean) {
     val context = LocalContext.current
     val metrix = snapshot.metrix
     val stats = metrix.statistics
@@ -53,6 +53,10 @@ private fun LargeContentBody(snapshot: WidgetSnapshot, staleNote: String?) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth()) {
             StatusBadge(snapshot)
+            if (refreshing) {
+                Spacer(GlanceModifier.width(6.dp))
+                RefreshDot()
+            }
             Spacer(GlanceModifier.defaultWeight())
             Text(
                 text = "#${metrix.login} · ${metrix.platform ?: ""}",

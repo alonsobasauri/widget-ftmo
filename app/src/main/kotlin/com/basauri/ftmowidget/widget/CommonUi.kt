@@ -226,6 +226,21 @@ fun ObjectiveRow(
     }
 }
 
+/**
+ * Small accent-colored dot rendered while a refresh is in flight. Sized so it
+ * fits inside the header row of every widget variant without pushing other
+ * children around.
+ */
+@Composable
+fun RefreshDot() {
+    Box(
+        modifier = GlanceModifier
+            .size(8.dp)
+            .background(WidgetTheme.Accent)
+            .cornerRadius(4.dp),
+    ) {}
+}
+
 @Composable
 fun MoneyText(money: Money?, fontSizeSp: Int, withSign: Boolean = false) {
     val amount = money?.amount ?: 0.0

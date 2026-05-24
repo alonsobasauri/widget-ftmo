@@ -12,6 +12,8 @@ class FtmoRepository(context: Context) {
 
     suspend fun cachedSnapshot(): WidgetSnapshot? = store.currentSnapshot()
     suspend fun cachedError(): String? = store.currentError()
+    suspend fun cachedRefreshing(): Boolean = store.currentRefreshing()
+    suspend fun setRefreshing(value: Boolean) = store.setRefreshing(value)
 
     /** Fetches and persists. Throws on failure (after persisting the error message). */
     suspend fun refresh(): WidgetSnapshot {

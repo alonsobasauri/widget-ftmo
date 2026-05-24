@@ -41,10 +41,11 @@ class FtmoWidget : GlanceAppWidget() {
         repository.currentIdentity() ?: return WidgetState.Unconfigured
         val cached = repository.cachedSnapshot()
         val error = repository.cachedError()
+        val refreshing = repository.cachedRefreshing()
         return when {
-            error != null && cached == null -> WidgetState.Error(error, null)
-            error != null -> WidgetState.Error(error, cached)
-            cached != null -> WidgetState.Ready(cached)
+            error != null && cached == null -> WidgetState.Error(error, null, refreshing)
+            error != null -> WidgetState.Error(error, cached, refreshing)
+            cached != null -> WidgetState.Ready(cached, refreshing)
             else -> WidgetState.Loading
         }
     }
