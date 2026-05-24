@@ -22,14 +22,18 @@ class RefreshWorker(
 
     override suspend fun doWork(): Result {
         val repository = FtmoRepository(applicationContext)
+        // Re-assert the refreshing flag at the start so the indicator is visible
+        // for periodic runs too, not only taps that came through RefreshAction.
+        repository.setRefreshing(true)
         return try {
             repository.refresh()
-            FtmoWidget().updateAll(applicationContext)
             Result.success()
         } catch (t: Throwable) {
             // The repository already persisted the error message; let Glance render it.
-            FtmoWidget().updateAll(applicationContext)
             if (runAttemptCount < 3) Result.retry() else Result.success()
+        } finally {
+            repository.setRefreshing(false)
+            FtmoWidget().updateAll(applicationContext)
         }
     }
 

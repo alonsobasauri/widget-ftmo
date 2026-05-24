@@ -2,6 +2,7 @@ package com.basauri.ftmowidget.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -24,6 +25,7 @@ class AccountStore(private val context: Context) {
         val LAST_SNAPSHOT = stringPreferencesKey("last_snapshot_json")
         val LAST_ERROR = stringPreferencesKey("last_error")
         val LAST_FETCH_AT = longPreferencesKey("last_fetch_at")
+        val REFRESHING = booleanPreferencesKey("refreshing")
     }
 
     val identity: Flow<ShareIdentity?> = context.accountDataStore.data.map { prefs ->
@@ -68,4 +70,13 @@ class AccountStore(private val context: Context) {
 
     suspend fun currentError(): String? =
         context.accountDataStore.data.first()[Keys.LAST_ERROR]
+
+    suspend fun setRefreshing(value: Boolean) {
+        context.accountDataStore.edit { prefs ->
+            if (value) prefs[Keys.REFRESHING] = true else prefs.remove(Keys.REFRESHING)
+        }
+    }
+
+    suspend fun currentRefreshing(): Boolean =
+        context.accountDataStore.data.first()[Keys.REFRESHING] == true
 }

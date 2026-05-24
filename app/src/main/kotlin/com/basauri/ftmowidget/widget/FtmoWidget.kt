@@ -19,7 +19,7 @@ import com.basauri.ftmowidget.data.FtmoRepository
 
 class FtmoWidget : GlanceAppWidget() {
 
-    override val sizeMode: SizeMode = SizeMode.Responsive(setOf(SMALL, MEDIUM, LARGE))
+    override val sizeMode: SizeMode = SizeMode.Responsive(setOf(SMALL, MEDIUM, LARGE, XLARGE))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = FtmoRepository(context)
@@ -31,6 +31,7 @@ class FtmoWidget : GlanceAppWidget() {
     private fun Body(state: WidgetState) {
         val size = LocalSize.current
         when {
+            size.width >= XLARGE.width && size.height >= XLARGE.height -> XLargeContent(state)
             size.width >= LARGE.width && size.height >= LARGE.height -> LargeContent(state)
             size.width >= MEDIUM.width && size.height >= MEDIUM.height -> MediumContent(state)
             else -> SmallContent(state)
@@ -41,10 +42,11 @@ class FtmoWidget : GlanceAppWidget() {
         repository.currentIdentity() ?: return WidgetState.Unconfigured
         val cached = repository.cachedSnapshot()
         val error = repository.cachedError()
+        val refreshing = repository.cachedRefreshing()
         return when {
-            error != null && cached == null -> WidgetState.Error(error, null)
-            error != null -> WidgetState.Error(error, cached)
-            cached != null -> WidgetState.Ready(cached)
+            error != null && cached == null -> WidgetState.Error(error, null, refreshing)
+            error != null -> WidgetState.Error(error, cached, refreshing)
+            cached != null -> WidgetState.Ready(cached, refreshing)
             else -> WidgetState.Loading
         }
     }
@@ -53,6 +55,9 @@ class FtmoWidget : GlanceAppWidget() {
         val SMALL = DpSize(140.dp, 90.dp)
         val MEDIUM = DpSize(220.dp, 140.dp)
         val LARGE = DpSize(260.dp, 240.dp)
+        // 4x4 on most launchers maps to roughly 280-320dp square; use a slightly
+        // narrower trigger so the layout activates reliably when the user resizes.
+        val XLARGE = DpSize(280.dp, 360.dp)
     }
 }
 
