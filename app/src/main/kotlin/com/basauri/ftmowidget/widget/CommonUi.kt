@@ -30,6 +30,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.basauri.ftmowidget.R
 import com.basauri.ftmowidget.config.ConfigActivity
+import com.basauri.ftmowidget.data.Format
 import com.basauri.ftmowidget.data.Money
 import com.basauri.ftmowidget.data.Objective
 import com.basauri.ftmowidget.data.WidgetSnapshot
@@ -239,6 +240,180 @@ fun RefreshDot() {
             .background(WidgetTheme.Accent)
             .cornerRadius(4.dp),
     ) {}
+}
+
+/** Small all-caps section header for the XL layout. */
+@Composable
+fun SectionTitle(text: String) {
+    Text(
+        text = text.uppercase(),
+        style = TextStyle(
+            color = ColorProvider(WidgetTheme.TextMuted),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+        ),
+    )
+}
+
+/**
+ * Bidirectional track: a center divider with red filling from center leftward when
+ * progress is negative (below profit target) and green filling rightward when
+ * progress is positive. Makes the "I'm below zero" state obvious at a glance,
+ * which the old unidirectional bar made misleading.
+ */
+@Composable
+fun BidirectionalScale(pct: Float, trackHalfWidth: androidx.compose.ui.unit.Dp = 120.dp) {
+    val left = if (pct < 0f) (-pct).coerceAtMost(1f) else 0f
+    val right = if (pct > 0f) pct.coerceAtMost(1f) else 0f
+    Row(modifier = GlanceModifier.height(6.dp)) {
+        Box(
+            modifier = GlanceModifier
+                .width(trackHalfWidth)
+                .height(6.dp)
+                .background(WidgetTheme.SurfaceMuted)
+                .cornerRadius(3.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            if (left > 0f) {
+                Box(
+                    modifier = GlanceModifier
+                        .width((trackHalfWidth.value * left).dp)
+                        .height(6.dp)
+                        .background(WidgetTheme.Danger)
+                        .cornerRadius(3.dp),
+                ) {}
+            }
+        }
+        Spacer(GlanceModifier.width(2.dp))
+        Box(
+            modifier = GlanceModifier
+                .width(trackHalfWidth)
+                .height(6.dp)
+                .background(WidgetTheme.SurfaceMuted)
+                .cornerRadius(3.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            if (right > 0f) {
+                Box(
+                    modifier = GlanceModifier
+                        .width((trackHalfWidth.value * right).dp)
+                        .height(6.dp)
+                        .background(WidgetTheme.Success)
+                        .cornerRadius(3.dp),
+                ) {}
+            }
+        }
+    }
+}
+
+/**
+ * Profit target row: header text + bidirectional bar so the user can tell at a
+ * glance whether they are above or below zero relative to the target.
+ */
+@Composable
+fun ProfitTargetRow(objective: Objective?, currency: String?, trackHalfWidth: androidx.compose.ui.unit.Dp) {
+    val context = LocalContext.current
+    val pct = objective?.percentage?.let {
+        if (it.type == "fraction") it.value else it.value / 100.0
+    } ?: 0.0
+    val resultText = Format.money(objective?.result?.amount, currency, withSign = true)
+    val limitText = Format.money(objective?.limit?.amount, currency)
+    val pctText = if (pct != 0.0) {
+        val sign = if (pct > 0) "+" else ""
+        "  $sign${(pct * 100).toInt()}%"
+    } else ""
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(text = context.getString(R.string.widget_profit_target), style = WidgetTheme.titleStyle())
+            Spacer(GlanceModifier.defaultWeight())
+            Text(
+                text = "$resultText / $limitText$pctText",
+                style = TextStyle(
+                    color = ColorProvider(WidgetTheme.TextSecondary),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+            )
+        }
+        Spacer(GlanceModifier.height(4.dp))
+        BidirectionalScale(pct = pct.toFloat(), trackHalfWidth = trackHalfWidth)
+    }
+}
+
+/**
+ * Buffer bar: shows how much of the loss limit has been consumed. Colour shifts
+ * green → amber → red as usage approaches the limit. Used for "Max Daily Loss"
+ * and the overall loss buffer where the FTMO objective is a cap, not a target.
+ */
+@Composable
+fun BufferRow(
+    label: String,
+    objective: Objective?,
+    currency: String?,
+    trackWidth: androidx.compose.ui.unit.Dp,
+) {
+    val pct = objective?.percentage?.let {
+        if (it.type == "fraction") it.value else it.value / 100.0
+    } ?: 0.0
+    val pctAbs = kotlin.math.abs(pct).toFloat().coerceIn(0f, 1f)
+    val color = when {
+        pctAbs < 0.6f -> WidgetTheme.Success
+        pctAbs < 0.85f -> WidgetTheme.Warning
+        else -> WidgetTheme.Danger
+    }
+    val resultText = Format.money(objective?.result?.amount, currency, withSign = true)
+    val limitText = Format.money(objective?.limit?.amount, currency)
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(text = label, style = WidgetTheme.titleStyle())
+            Spacer(GlanceModifier.defaultWeight())
+            Text(
+                text = "$resultText / $limitText  (${(pctAbs * 100).toInt()}%)",
+                style = TextStyle(
+                    color = ColorProvider(WidgetTheme.TextSecondary),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+            )
+        }
+        Spacer(GlanceModifier.height(4.dp))
+        ProgressBar(progress = pctAbs, color = color, trackWidth = trackWidth)
+    }
+}
+
+data class StatCell(val label: String, val value: String, val warn: Boolean = false)
+
+/** Single cell in the 3×3 performance grid. */
+@Composable
+fun StatTile(cell: StatCell, modifier: GlanceModifier = GlanceModifier) {
+    Column(modifier = modifier) {
+        Text(
+            text = cell.label,
+            style = TextStyle(
+                color = ColorProvider(WidgetTheme.TextMuted),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+        Text(
+            text = cell.value,
+            style = TextStyle(
+                color = ColorProvider(if (cell.warn) WidgetTheme.Warning else WidgetTheme.TextPrimary),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+    }
+}
+
+/** One row in the 3×3 performance grid; each cell takes an equal share of the row. */
+@Composable
+fun PerfRow(a: StatCell, b: StatCell, c: StatCell) {
+    Row(modifier = GlanceModifier.fillMaxWidth()) {
+        StatTile(a, modifier = GlanceModifier.defaultWeight())
+        StatTile(b, modifier = GlanceModifier.defaultWeight())
+        StatTile(c, modifier = GlanceModifier.defaultWeight())
+    }
 }
 
 @Composable
