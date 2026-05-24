@@ -336,24 +336,28 @@ fun ProfitTargetRow(objective: Objective?, currency: String?, trackHalfWidth: an
 
 /**
  * Buffer bar: shows how much of the loss limit has been consumed. Colour shifts
- * green → amber → red as usage approaches the limit. Used for "Max Daily Loss"
- * and the overall loss buffer where the FTMO objective is a cap, not a target.
+ * green → amber → red as usage approaches the limit. A negative [resultAmount]
+ * (a loss) fills the bar; a profit leaves it empty.
  */
 @Composable
-fun BufferRow(
+fun BufferBarRow(
     label: String,
-    objective: Objective?,
+    resultAmount: Double?,
+    limitAmount: Double?,
     currency: String?,
     trackWidth: androidx.compose.ui.unit.Dp,
 ) {
-    val pctAbs = kotlin.math.abs(objective?.progressRatio ?: 0.0).toFloat().coerceIn(0f, 1f)
+    val ratio = if (resultAmount != null && limitAmount != null && limitAmount != 0.0) {
+        resultAmount / limitAmount
+    } else 0.0
+    val pctAbs = ratio.toFloat().coerceIn(0f, 1f)
     val color = when {
         pctAbs < 0.6f -> WidgetTheme.Success
         pctAbs < 0.85f -> WidgetTheme.Warning
         else -> WidgetTheme.Danger
     }
-    val resultText = Format.money(objective?.result?.amount, currency, withSign = true)
-    val limitText = Format.money(objective?.limit?.amount, currency)
+    val resultText = Format.money(resultAmount, currency, withSign = true)
+    val limitText = Format.money(limitAmount, currency)
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(text = label, style = WidgetTheme.titleStyle())
@@ -371,6 +375,15 @@ fun BufferRow(
         ProgressBar(progress = pctAbs, color = color, trackWidth = trackWidth)
     }
 }
+
+/** Buffer bar driven straight from an FTMO objective's result/limit. */
+@Composable
+fun BufferRow(
+    label: String,
+    objective: Objective?,
+    currency: String?,
+    trackWidth: androidx.compose.ui.unit.Dp,
+) = BufferBarRow(label, objective?.result?.amount, objective?.limit?.amount, currency, trackWidth)
 
 data class StatCell(val label: String, val value: String, val warn: Boolean = false)
 

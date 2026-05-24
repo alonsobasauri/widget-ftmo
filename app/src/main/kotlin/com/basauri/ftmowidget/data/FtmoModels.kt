@@ -125,6 +125,17 @@ data class ObjectiveValue(
     }
 }
 
+/**
+ * The realized P&L the user thinks of as "today". info.todaysProfit rolls over at
+ * FTMO server midnight (reading 0 on a fresh server day), so prefer the most recent
+ * daily-summary entry — the figure shown on the FTMO dashboard — and fall back to
+ * the info fields only when the summary is empty.
+ */
+val MetrixResponse.todayPnl: Money?
+    get() = dailySummary.maxByOrNull { it.date }?.realizedProfit
+        ?: info.todaysProfit
+        ?: info.todaysRealizedProfit
+
 /** True when the objective carries usable numeric limit and result. */
 val Objective.hasData: Boolean
     get() = limit?.amount != null && result?.amount != null

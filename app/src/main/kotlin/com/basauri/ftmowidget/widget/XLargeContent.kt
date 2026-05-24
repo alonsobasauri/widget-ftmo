@@ -26,6 +26,7 @@ import com.basauri.ftmowidget.data.DailyEntry
 import com.basauri.ftmowidget.data.Format
 import com.basauri.ftmowidget.data.WidgetSnapshot
 import com.basauri.ftmowidget.data.overallMaxLoss
+import com.basauri.ftmowidget.data.todayPnl
 
 @Composable
 fun XLargeContent(state: WidgetState) {
@@ -90,7 +91,6 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
     val context = LocalContext.current
     val metrix = snapshot.metrix
     val stats = metrix.statistics
-    val info = metrix.info
     TapRow {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth()) {
             StatusBadge(snapshot)
@@ -120,7 +120,7 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(text = context.getString(R.string.widget_today), style = WidgetTheme.titleStyle())
-                MoneyText(info.todaysProfit ?: info.todaysRealizedProfit, fontSizeSp = 18, withSign = true)
+                MoneyText(metrix.todayPnl, fontSizeSp = 18, withSign = true)
                 Text(
                     text = "${stats.tradesCount}t · ${Format.ratio(stats.lots)} lots",
                     style = TextStyle(color = ColorProvider(WidgetTheme.TextSecondary), fontSize = 10.sp),
@@ -140,9 +140,11 @@ private fun ObjectivesSection(snapshot: WidgetSnapshot) {
         Spacer(GlanceModifier.height(4.dp))
         ProfitTargetRow(objectives.profit, currency, trackHalfWidth = 120.dp)
         Spacer(GlanceModifier.height(6.dp))
-        BufferRow(
+        // Today's realized P&L against the daily loss limit (3% of the account).
+        BufferBarRow(
             label = context.getString(R.string.widget_max_daily_loss),
-            objective = objectives.maxDailyLoss,
+            resultAmount = snapshot.metrix.todayPnl?.amount,
+            limitAmount = objectives.maxDailyLoss?.limit?.amount,
             currency = currency,
             trackWidth = 240.dp,
         )
