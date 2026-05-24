@@ -7,6 +7,8 @@ import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.item
 import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
@@ -39,19 +41,57 @@ fun XLargeContent(state: WidgetState) {
 
 @Composable
 private fun XLargeBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing: Boolean) {
+    val metrix = snapshot.metrix
+    val days = metrix.dailySummary.take(5)
+
+    // A flat Column generates too many RemoteViews nodes for a 4x4 widget and the
+    // host silently drops the overflow. LazyColumn renders items through a collection
+    // adapter, sidestepping that limit and adding scroll when content exceeds height.
+    LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
+        item { HeaderAndEquity(snapshot, refreshing) }
+        item { ObjectivesSection(snapshot) }
+        item { PerformanceSection(snapshot) }
+        item { SectionRow { SectionTitle(LocalContext.current.getString(R.string.widget_daily_summary)) } }
+        days.forEach { day -> item { TapRow { DailyRow(day) } } }
+        if (staleNote != null) {
+            item {
+                TapRow {
+                    Text(
+                        text = "stale: ${staleNote.take(60)}",
+                        style = TextStyle(color = ColorProvider(WidgetTheme.Warning), fontSize = 9.sp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Wraps a section so a tap anywhere on it triggers a refresh. */
+@Composable
+private fun TapRow(content: @Composable () -> Unit) {
+    Column(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .clickable(actionRunCallback<RefreshAction>()),
+    ) { content() }
+}
+
+@Composable
+private fun SectionRow(content: @Composable () -> Unit) {
+    Column(modifier = GlanceModifier.fillMaxWidth().clickable(actionRunCallback<RefreshAction>())) {
+        Spacer(GlanceModifier.height(8.dp))
+        content()
+        Spacer(GlanceModifier.height(2.dp))
+    }
+}
+
+@Composable
+private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
     val context = LocalContext.current
     val metrix = snapshot.metrix
     val stats = metrix.statistics
     val info = metrix.info
-    val objectives = metrix.objectives
-    val currency = metrix.currency
-
-    Column(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .clickable(actionRunCallback<RefreshAction>()),
-    ) {
-        // Header
+    TapRow {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth()) {
             StatusBadge(snapshot)
             if (refreshing) {
@@ -69,8 +109,6 @@ private fun XLargeBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing:
             )
         }
         Spacer(GlanceModifier.height(8.dp))
-
-        // Equity / Today
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
             Column(modifier = GlanceModifier.defaultWeight()) {
                 Text(text = context.getString(R.string.widget_equity), style = WidgetTheme.titleStyle())
@@ -89,9 +127,15 @@ private fun XLargeBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing:
                 )
             }
         }
-        Spacer(GlanceModifier.height(10.dp))
+    }
+}
 
-        // Objectives
+@Composable
+private fun ObjectivesSection(snapshot: WidgetSnapshot) {
+    val context = LocalContext.current
+    val objectives = snapshot.metrix.objectives
+    val currency = snapshot.metrix.currency
+    SectionRow {
         SectionTitle(context.getString(R.string.widget_objectives))
         Spacer(GlanceModifier.height(4.dp))
         ProfitTargetRow(objectives.profit, currency, trackHalfWidth = 120.dp)
@@ -109,9 +153,14 @@ private fun XLargeBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing:
             currency = currency,
             trackWidth = 240.dp,
         )
-        Spacer(GlanceModifier.height(10.dp))
+    }
+}
 
-        // Performance grid 3x3
+@Composable
+private fun PerformanceSection(snapshot: WidgetSnapshot) {
+    val context = LocalContext.current
+    val stats = snapshot.metrix.statistics
+    SectionRow {
         SectionTitle(context.getString(R.string.widget_performance))
         Spacer(GlanceModifier.height(4.dp))
         PerfRow(
@@ -131,20 +180,6 @@ private fun XLargeBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing:
             StatCell("Avg−", Format.money(stats.avgLoss)),
             StatCell("Lots", Format.ratio(stats.lots)),
         )
-        Spacer(GlanceModifier.height(10.dp))
-
-        // Daily summary (5 días)
-        SectionTitle(context.getString(R.string.widget_daily_summary))
-        Spacer(GlanceModifier.height(2.dp))
-        metrix.dailySummary.take(5).forEach { day -> DailyRow(day) }
-
-        if (staleNote != null) {
-            Spacer(GlanceModifier.height(4.dp))
-            Text(
-                text = "stale: ${staleNote.take(60)}",
-                style = TextStyle(color = ColorProvider(WidgetTheme.Warning), fontSize = 9.sp),
-            )
-        }
     }
 }
 
