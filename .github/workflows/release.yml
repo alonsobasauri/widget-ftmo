@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       tag:
@@ -11,8 +13,50 @@ on:
         required: true
 
 jobs:
+  detect:
+    name: Detect release trigger
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.t.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Resolve tag
+        id: t
+        run: |
+          set -e
+          case "${{ github.event_name }}" in
+            workflow_dispatch)
+              echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+              ;;
+            push)
+              if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+                echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+              else
+                NEW=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || true)
+                OLD=$(git show HEAD~1:app/build.gradle.kts 2>/dev/null | grep -oP 'versionName\s*=\s*"\K[^"]+' || true)
+                echo "Detected versionName: old='$OLD' new='$NEW'"
+                if [ -n "$NEW" ] && [ "$NEW" != "$OLD" ]; then
+                  TAG="v$NEW"
+                  if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                    echo "Release $TAG already exists, skipping."
+                  else
+                    echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+                  fi
+                fi
+              fi
+              ;;
+          esac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   release:
     name: Build and publish signed release
+    needs: detect
+    if: needs.detect.outputs.tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -24,15 +68,6 @@ jobs:
         with:
           # Need full history so generate_release_notes can diff against the previous tag.
           fetch-depth: 0
-
-      - name: Resolve tag
-        id: tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -69,7 +104,7 @@ jobs:
         id: rename
         run: |
           SRC=app/build/outputs/apk/release/app-release.apk
-          DEST="widget-ftmo-${{ steps.tag.outputs.name }}.apk"
+          DEST="widget-ftmo-${{ needs.detect.outputs.tag }}.apk"
           test -f "$SRC" || { echo "::error::Expected APK at $SRC"; ls -la app/build/outputs/apk/release/ || true; exit 1; }
           cp "$SRC" "$DEST"
           echo "path=$DEST" >> "$GITHUB_OUTPUT"
@@ -77,8 +112,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.name }}
-          name: ${{ steps.tag.outputs.name }}
+          tag_name: ${{ needs.detect.outputs.tag }}
+          name: ${{ needs.detect.outputs.tag }}
           files: ${{ steps.rename.outputs.path }}
           generate_release_notes: true
           draft: false
