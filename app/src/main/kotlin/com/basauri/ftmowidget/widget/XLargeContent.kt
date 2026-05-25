@@ -43,7 +43,9 @@ fun XLargeContent(state: WidgetState) {
 @Composable
 private fun XLargeBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing: Boolean) {
     val metrix = snapshot.metrix
-    val days = metrix.dailySummary.take(5)
+    // The latest day is already surfaced as "Today" in the header; drop it here so
+    // the log shows the days leading up to today instead of repeating it.
+    val days = metrix.dailySummary.sortedByDescending { it.date }.drop(1).take(5)
 
     // A flat Column generates too many RemoteViews nodes for a 4x4 widget and the
     // host silently drops the overflow. LazyColumn renders items through a collection
@@ -113,7 +115,7 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
                 ShadowText(text = context.getString(R.string.widget_equity), maxLines = 1, style = WidgetTheme.titleStyle())
                 MoneyText(stats.equity, fontSizeSp = 22)
                 ShadowText(
-                    text = "Bal: ${Format.money(stats.balance)}",
+                    text = "Bal: ${Format.moneyWhole(stats.balance.amount, stats.balance.currency)}",
                     maxLines = 1,
                     style = TextStyle(color = ColorProvider(WidgetTheme.TextSecondary), fontSize = 11.sp),
                 )
@@ -121,11 +123,6 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
             Column(horizontalAlignment = Alignment.End) {
                 ShadowText(text = context.getString(R.string.widget_today), maxLines = 1, style = WidgetTheme.titleStyle())
                 MoneyText(metrix.todayPnl, fontSizeSp = 18, withSign = true)
-                ShadowText(
-                    text = "${stats.tradesCount}t · ${Format.ratio(stats.lots)} lots",
-                    maxLines = 1,
-                    style = TextStyle(color = ColorProvider(WidgetTheme.TextSecondary), fontSize = 10.sp),
-                )
             }
         }
     }
@@ -167,7 +164,7 @@ private fun PerformanceSection(snapshot: WidgetSnapshot) {
         SectionTitle(context.getString(R.string.widget_performance))
         Spacer(GlanceModifier.height(4.dp))
         PerfRow(
-            StatCell("WR", Format.percent(stats.winRate)),
+            StatCell("WR", Format.winRate(stats.winRate)),
             StatCell("PF", Format.ratio(stats.profitFactor), warn = stats.profitFactor < 1.0 && stats.tradesCount > 0),
             StatCell("Exp", Format.money(stats.expectancy, withSign = true), warn = (stats.expectancy?.amount ?: 0.0) < 0.0),
         )

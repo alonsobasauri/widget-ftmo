@@ -364,9 +364,11 @@ fun ProfitTargetRow(objective: Objective?, currency: String?, trackHalfWidth: an
 }
 
 /**
- * Buffer bar: shows how much of the loss limit has been consumed. Colour shifts
- * green → amber → red as usage approaches the limit. A negative [resultAmount]
- * (a loss) fills the bar; a profit leaves it empty.
+ * Buffer bar: the bar shows how much of the loss limit is consumed (green → amber
+ * → red as it fills), and the figure shows how much room is *left* — the number a
+ * trader actually acts on — instead of restating the loss already shown elsewhere.
+ * Only a result that shares the limit's sign (an actual loss) consumes the buffer;
+ * a profit leaves it full.
  */
 @Composable
 fun BufferBarRow(
@@ -376,23 +378,25 @@ fun BufferBarRow(
     currency: String?,
     trackWidth: androidx.compose.ui.unit.Dp,
 ) {
-    val ratio = if (resultAmount != null && limitAmount != null && limitAmount != 0.0) {
-        resultAmount / limitAmount
+    val limitAbs = limitAmount?.let { kotlin.math.abs(it) }
+    val consumedAbs = if (resultAmount != null && limitAmount != null && resultAmount * limitAmount > 0.0) {
+        kotlin.math.abs(resultAmount)
     } else 0.0
-    val pctAbs = ratio.toFloat().coerceIn(0f, 1f)
+    val pctAbs = if (limitAbs != null && limitAbs != 0.0) {
+        (consumedAbs / limitAbs).toFloat().coerceIn(0f, 1f)
+    } else 0f
+    val remaining = limitAbs?.let { (it - consumedAbs).coerceAtLeast(0.0) }
     val color = when {
         pctAbs < 0.6f -> WidgetTheme.Success
         pctAbs < 0.85f -> WidgetTheme.Warning
         else -> WidgetTheme.Danger
     }
-    val resultText = Format.money(resultAmount, currency, withSign = true)
-    val limitText = Format.money(limitAmount, currency)
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             ShadowText(text = label, maxLines = 1, style = WidgetTheme.titleStyle())
             Spacer(GlanceModifier.defaultWeight())
             ShadowText(
-                text = "$resultText / $limitText  (${(pctAbs * 100).toInt()}%)",
+                text = "${Format.moneyWhole(remaining, currency)} / ${Format.moneyWhole(limitAbs, currency)} left",
                 maxLines = 1,
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.TextSecondary),

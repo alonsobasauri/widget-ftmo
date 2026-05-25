@@ -25,6 +25,7 @@ import com.basauri.ftmowidget.data.DailyEntry
 import com.basauri.ftmowidget.data.Format
 import com.basauri.ftmowidget.data.WidgetSnapshot
 import com.basauri.ftmowidget.data.overallMaxLoss
+import com.basauri.ftmowidget.data.todayPnl
 
 @Composable
 fun LargeContent(state: WidgetState) {
@@ -43,7 +44,6 @@ private fun LargeContentBody(snapshot: WidgetSnapshot, staleNote: String?, refre
     val context = LocalContext.current
     val metrix = snapshot.metrix
     val stats = metrix.statistics
-    val info = metrix.info
     val objectives = metrix.objectives
     val currency = metrix.currency
 
@@ -74,7 +74,7 @@ private fun LargeContentBody(snapshot: WidgetSnapshot, staleNote: String?, refre
                 Text(text = context.getString(R.string.widget_equity), style = WidgetTheme.titleStyle())
                 MoneyText(stats.equity, fontSizeSp = 22)
                 Text(
-                    text = "Bal: ${Format.money(stats.balance)}",
+                    text = "Bal: ${Format.moneyWhole(stats.balance.amount, stats.balance.currency)}",
                     style = TextStyle(
                         color = ColorProvider(WidgetTheme.TextSecondary),
                         fontSize = 11.sp,
@@ -83,9 +83,9 @@ private fun LargeContentBody(snapshot: WidgetSnapshot, staleNote: String?, refre
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(text = context.getString(R.string.widget_today), style = WidgetTheme.titleStyle())
-                MoneyText(info.todaysProfit ?: info.todaysRealizedProfit, fontSizeSp = 18, withSign = true)
+                MoneyText(metrix.todayPnl, fontSizeSp = 18, withSign = true)
                 Text(
-                    text = "WR ${Format.percent(stats.winRate)} · PF ${Format.ratio(stats.profitFactor)}",
+                    text = "WR ${Format.winRate(stats.winRate)} · PF ${Format.ratio(stats.profitFactor)}",
                     style = TextStyle(
                         color = ColorProvider(WidgetTheme.TextSecondary),
                         fontSize = 10.sp,
@@ -102,14 +102,14 @@ private fun LargeContentBody(snapshot: WidgetSnapshot, staleNote: String?, refre
             trackWidth = 240.dp,
         )
         Spacer(GlanceModifier.height(6.dp))
-        ObjectiveRow(
+        BufferRow(
             label = context.getString(R.string.widget_max_daily_loss),
             objective = objectives.maxDailyLoss,
             currency = currency,
             trackWidth = 240.dp,
         )
         Spacer(GlanceModifier.height(6.dp))
-        ObjectiveRow(
+        BufferRow(
             label = context.getString(R.string.widget_max_loss),
             objective = objectives.overallMaxLoss,
             currency = currency,
@@ -122,7 +122,7 @@ private fun LargeContentBody(snapshot: WidgetSnapshot, staleNote: String?, refre
             style = WidgetTheme.titleStyle(),
         )
         Spacer(GlanceModifier.height(4.dp))
-        metrix.dailySummary.take(5).forEach { day -> DailyRow(day) }
+        metrix.dailySummary.sortedByDescending { it.date }.drop(1).take(5).forEach { day -> DailyRow(day) }
 
         if (staleNote != null) {
             Spacer(GlanceModifier.height(4.dp))

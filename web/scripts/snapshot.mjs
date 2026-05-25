@@ -50,6 +50,17 @@ function scorePct(s) {
   return s.type === "fraction" ? s.value * 100 : s.value;
 }
 
+// Win rate is bounded [0,100]%, but FTMO sometimes tags it "fraction" while
+// sending an already-percent value (29.03), which scorePct would blow up to
+// 2903%. Treat <=1 as a real fraction, larger values as already a percent.
+function winRatePct(s) {
+  if (!s || typeof s.value !== "number") return null;
+  let pct = s.value;
+  if (pct <= 1) pct *= 100; // 0..1 fraction → percent
+  while (pct > 100) pct /= 100; // over-scaled (e.g. 2903 → 29.03)
+  return pct;
+}
+
 function progressPct(obj) {
   if (!obj) return null;
   const l = objAmount(obj.limit);
@@ -108,7 +119,7 @@ function extract(metrix) {
     profitResult: num(objAmount(obj.profit?.result)),
     maxLossUsedPct: num(progressPct(maxLossObj)),
     maxDailyLossUsedPct: num(progressPct(obj.maxDailyLoss)),
-    winRate: num(scorePct(stats.winRate)),
+    winRate: num(winRatePct(stats.winRate)),
     profitFactor: num(stats.profitFactor),
     expectancy: num(moneyAmount(stats.expectancy)),
     sharpe: num(stats.sharpeRate),
