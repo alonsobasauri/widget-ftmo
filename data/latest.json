@@ -1,0 +1,84 @@
+{
+  "updatedAt": "2026-05-25T15:38:26.206Z",
+  "login": 531303305,
+  "status": "active",
+  "result": null,
+  "phase": "verification",
+  "productLine": "one_step",
+  "currency": "USD",
+  "initialBalance": 10000,
+  "accountStart": "2026-05-17T00:00:01+02:00",
+  "accountEnd": null,
+  "profitTargetLimit": 1000,
+  "maxLossLimit": null,
+  "maxDailyLossLimit": -300,
+  "minTradingDays": null,
+  "t": "2026-05-25T15:38:26.206Z",
+  "equity": 9690.45,
+  "balance": 9690.45,
+  "todayPnl": -32.67,
+  "profitPct": -30.955,
+  "profitResult": -309.55,
+  "maxLossUsedPct": 30.955,
+  "maxDailyLossUsedPct": 59.93333333333334,
+  "winRate": 2906.976744,
+  "profitFactor": 0.41384208,
+  "expectancy": -3.81,
+  "sharpe": -0.74381268,
+  "avgRR": 0.9766673,
+  "lots": 24.41,
+  "tradesCount": 86,
+  "consistency": null,
+  "discipline": null,
+  "tradingDaysCount": null,
+  "daily": [
+    {
+      "date": "2026-05-25",
+      "pnl": -32.67,
+      "trades": 26,
+      "lots": 17.74
+    },
+    {
+      "date": "2026-05-24",
+      "pnl": -2.61,
+      "trades": 1,
+      "lots": 0.01
+    },
+    {
+      "date": "2026-05-22",
+      "pnl": -8.72,
+      "trades": 6,
+      "lots": 4.02
+    },
+    {
+      "date": "2026-05-21",
+      "pnl": -157.16,
+      "trades": 44,
+      "lots": 1.53
+    },
+    {
+      "date": "2026-05-20",
+      "pnl": 5.16,
+      "trades": 4,
+      "lots": 0.57
+    },
+    {
+      "date": "2026-05-19",
+      "pnl": -84.81,
+      "trades": 2,
+      "lots": 0.07
+    },
+    {
+      "date": "2026-05-18",
+      "pnl": -5.85,
+      "trades": 2,
+      "lots": 0.38
+    },
+    {
+      "date": "2026-05-17",
+      "pnl": -22.89,
+      "trades": 1,
+      "lots": 0.09
+    }
+  ]
+}
