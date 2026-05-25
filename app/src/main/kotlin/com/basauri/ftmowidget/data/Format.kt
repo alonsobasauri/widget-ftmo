@@ -40,6 +40,31 @@ object Format {
         return nf.format(value)
     }
 
+    /**
+     * Friendly stale banner for when a refresh failed but cached data is shown.
+     * Classifies network/DNS failures as "Sin conexión" and includes the age of
+     * the cached snapshot instead of dumping the raw exception message.
+     */
+    fun staleNote(
+        errorMessage: String?,
+        fetchedAtMillis: Long,
+        nowMillis: Long = System.currentTimeMillis(),
+    ): String {
+        val ageMin = ((nowMillis - fetchedAtMillis) / 60000L).coerceAtLeast(0L)
+        val age = when {
+            ageMin < 1 -> "hace <1 min"
+            ageMin < 60 -> "hace $ageMin min"
+            else -> "hace ${ageMin / 60} h"
+        }
+        val m = errorMessage?.lowercase() ?: ""
+        val offline = listOf(
+            "resolve host", "unable to", "timeout", "timed out",
+            "failed to connect", "no address", "unreachable", "network",
+        ).any { m.contains(it) }
+        val prefix = if (offline) "Sin conexión" else "No actualizado"
+        return "⚠ $prefix · $age"
+    }
+
     fun shortDate(isoDate: String?): String {
         if (isoDate.isNullOrBlank()) return ""
         // FTMO returns ISO yyyy-MM-dd; show "22 May" style without pulling a calendar API.

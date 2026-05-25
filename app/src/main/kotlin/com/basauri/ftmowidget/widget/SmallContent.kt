@@ -79,7 +79,7 @@ private fun SmallContentBody(
         }
         if (staleNote != null) {
             Text(
-                text = "stale",
+                text = Format.staleNote(staleNote, snapshot.fetchedAtMillis),
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.Warning),
                     fontSize = 9.sp,

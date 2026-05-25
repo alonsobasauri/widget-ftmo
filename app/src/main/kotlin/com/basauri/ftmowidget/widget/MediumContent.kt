@@ -21,6 +21,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.basauri.ftmowidget.R
+import com.basauri.ftmowidget.data.Format
 import com.basauri.ftmowidget.data.WidgetSnapshot
 import com.basauri.ftmowidget.data.overallMaxLoss
 
@@ -104,10 +105,10 @@ private fun MediumContentBody(snapshot: WidgetSnapshot, staleNote: String?, refr
         if (staleNote != null) {
             Spacer(GlanceModifier.height(4.dp))
             Text(
-                text = "stale: ${staleNote.take(40)}",
+                text = Format.staleNote(staleNote, snapshot.fetchedAtMillis),
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.Warning),
-                    fontSize = 9.sp,
+                    fontSize = 10.sp,
                 ),
             )
         }

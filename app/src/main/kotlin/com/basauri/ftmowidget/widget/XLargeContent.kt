@@ -58,8 +58,8 @@ private fun XLargeBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing:
             item {
                 TapRow {
                     Text(
-                        text = "stale: ${staleNote.take(60)}",
-                        style = TextStyle(color = ColorProvider(WidgetTheme.Warning), fontSize = 9.sp),
+                        text = Format.staleNote(staleNote, snapshot.fetchedAtMillis),
+                        style = TextStyle(color = ColorProvider(WidgetTheme.Warning), fontSize = 10.sp),
                     )
                 }
             }
@@ -94,10 +94,6 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
     TapRow {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth()) {
             StatusBadge(snapshot)
-            if (refreshing) {
-                Spacer(GlanceModifier.width(6.dp))
-                RefreshDot()
-            }
             Spacer(GlanceModifier.defaultWeight())
             ShadowText(
                 text = "#${metrix.login} · ${metrix.platform ?: ""}",
@@ -108,6 +104,8 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
                     fontWeight = FontWeight.Medium,
                 ),
             )
+            Spacer(GlanceModifier.width(8.dp))
+            RefreshButton(refreshing)
         }
         Spacer(GlanceModifier.height(8.dp))
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {

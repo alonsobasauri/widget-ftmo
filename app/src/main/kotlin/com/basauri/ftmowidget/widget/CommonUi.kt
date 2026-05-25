@@ -242,6 +242,32 @@ fun RefreshDot() {
     ) {}
 }
 
+/**
+ * Explicit, always-visible refresh control. Tapping it runs RefreshAction. Gives a
+ * clear affordance in the XL layout, where the scrollable list makes tap-to-refresh
+ * on individual rows feel like row selection.
+ */
+@Composable
+fun RefreshButton(refreshing: Boolean) {
+    Box(
+        modifier = GlanceModifier
+            .clickable(actionRunCallback<RefreshAction>())
+            .cornerRadius(8.dp)
+            .background(WidgetTheme.SurfaceMuted)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = if (refreshing) "↻…" else "↻",
+            style = TextStyle(
+                color = ColorProvider(if (refreshing) WidgetTheme.TextMuted else WidgetTheme.Accent),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+    }
+}
+
 /** Small all-caps section header for the XL layout. */
 @Composable
 fun SectionTitle(text: String) {

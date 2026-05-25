@@ -127,10 +127,10 @@ private fun LargeContentBody(snapshot: WidgetSnapshot, staleNote: String?, refre
         if (staleNote != null) {
             Spacer(GlanceModifier.height(4.dp))
             Text(
-                text = "stale: ${staleNote.take(60)}",
+                text = Format.staleNote(staleNote, snapshot.fetchedAtMillis),
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.Warning),
-                    fontSize = 9.sp,
+                    fontSize = 10.sp,
                 ),
             )
         }
