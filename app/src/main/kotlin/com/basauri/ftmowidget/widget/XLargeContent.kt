@@ -99,8 +99,9 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
                 RefreshDot()
             }
             Spacer(GlanceModifier.defaultWeight())
-            Text(
+            ShadowText(
                 text = "#${metrix.login} · ${metrix.platform ?: ""}",
+                maxLines = 1,
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.TextMuted),
                     fontSize = 10.sp,
@@ -111,18 +112,20 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
         Spacer(GlanceModifier.height(8.dp))
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
             Column(modifier = GlanceModifier.defaultWeight()) {
-                Text(text = context.getString(R.string.widget_equity), style = WidgetTheme.titleStyle())
+                ShadowText(text = context.getString(R.string.widget_equity), maxLines = 1, style = WidgetTheme.titleStyle())
                 MoneyText(stats.equity, fontSizeSp = 22)
-                Text(
+                ShadowText(
                     text = "Bal: ${Format.money(stats.balance)}",
+                    maxLines = 1,
                     style = TextStyle(color = ColorProvider(WidgetTheme.TextSecondary), fontSize = 11.sp),
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(text = context.getString(R.string.widget_today), style = WidgetTheme.titleStyle())
+                ShadowText(text = context.getString(R.string.widget_today), maxLines = 1, style = WidgetTheme.titleStyle())
                 MoneyText(metrix.todayPnl, fontSizeSp = 18, withSign = true)
-                Text(
+                ShadowText(
                     text = "${stats.tradesCount}t · ${Format.ratio(stats.lots)} lots",
+                    maxLines = 1,
                     style = TextStyle(color = ColorProvider(WidgetTheme.TextSecondary), fontSize = 10.sp),
                 )
             }
@@ -193,8 +196,9 @@ private fun DailyRow(day: DailyEntry) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier.fillMaxWidth().height(18.dp),
     ) {
-        Text(
+        ShadowText(
             text = Format.shortDate(day.date),
+            maxLines = 1,
             style = TextStyle(
                 color = ColorProvider(WidgetTheme.TextSecondary),
                 fontSize = 11.sp,
@@ -202,18 +206,21 @@ private fun DailyRow(day: DailyEntry) {
             ),
             modifier = GlanceModifier.defaultWeight(),
         )
-        Text(
+        ShadowText(
             text = "${day.tradesCount}t",
+            maxLines = 1,
             style = TextStyle(color = ColorProvider(WidgetTheme.TextMuted), fontSize = 10.sp),
         )
         Spacer(GlanceModifier.width(8.dp))
-        Text(
+        ShadowText(
             text = Format.ratio(day.lots),
+            maxLines = 1,
             style = TextStyle(color = ColorProvider(WidgetTheme.TextMuted), fontSize = 10.sp),
         )
         Spacer(GlanceModifier.width(8.dp))
-        Text(
+        ShadowText(
             text = Format.money(day.realizedProfit, withSign = true),
+            maxLines = 1,
             style = TextStyle(color = ColorProvider(color), fontSize = 11.sp, fontWeight = FontWeight.Bold),
         )
     }

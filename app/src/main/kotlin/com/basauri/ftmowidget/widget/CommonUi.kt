@@ -206,10 +206,11 @@ fun ObjectiveRow(
 
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = label, style = WidgetTheme.titleStyle())
+            ShadowText(text = label, maxLines = 1, style = WidgetTheme.titleStyle())
             Spacer(GlanceModifier.defaultWeight())
-            Text(
+            ShadowText(
                 text = "$resultText / $limitText",
+                maxLines = 1,
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.TextSecondary),
                     fontSize = 11.sp,
@@ -244,8 +245,9 @@ fun RefreshDot() {
 /** Small all-caps section header for the XL layout. */
 @Composable
 fun SectionTitle(text: String) {
-    Text(
+    ShadowText(
         text = text.uppercase(),
+        maxLines = 1,
         style = TextStyle(
             color = ColorProvider(WidgetTheme.TextMuted),
             fontSize = 10.sp,
@@ -318,10 +320,11 @@ fun ProfitTargetRow(objective: Objective?, currency: String?, trackHalfWidth: an
     val pctText = "  ${if (ratio > 0) "+" else ""}${(ratio * 100).toInt()}%"
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = context.getString(R.string.widget_profit_target), style = WidgetTheme.titleStyle())
+            ShadowText(text = context.getString(R.string.widget_profit_target), maxLines = 1, style = WidgetTheme.titleStyle())
             Spacer(GlanceModifier.defaultWeight())
-            Text(
+            ShadowText(
                 text = "$resultText / $limitText$pctText",
+                maxLines = 1,
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.TextSecondary),
                     fontSize = 11.sp,
@@ -360,10 +363,11 @@ fun BufferBarRow(
     val limitText = Format.money(limitAmount, currency)
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = label, style = WidgetTheme.titleStyle())
+            ShadowText(text = label, maxLines = 1, style = WidgetTheme.titleStyle())
             Spacer(GlanceModifier.defaultWeight())
-            Text(
+            ShadowText(
                 text = "$resultText / $limitText  (${(pctAbs * 100).toInt()}%)",
+                maxLines = 1,
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.TextSecondary),
                     fontSize = 11.sp,
@@ -391,16 +395,18 @@ data class StatCell(val label: String, val value: String, val warn: Boolean = fa
 @Composable
 fun StatTile(cell: StatCell, modifier: GlanceModifier = GlanceModifier) {
     Column(modifier = modifier) {
-        Text(
+        ShadowText(
             text = cell.label,
+            maxLines = 1,
             style = TextStyle(
                 color = ColorProvider(WidgetTheme.TextMuted),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
             ),
         )
-        Text(
+        ShadowText(
             text = cell.value,
+            maxLines = 1,
             style = TextStyle(
                 color = ColorProvider(if (cell.warn) WidgetTheme.Warning else WidgetTheme.TextPrimary),
                 fontSize = 13.sp,
@@ -420,11 +426,43 @@ fun PerfRow(a: StatCell, b: StatCell, c: StatCell) {
     }
 }
 
+/**
+ * Glance has no text shadow/outline support, so we fake a drop shadow by drawing a
+ * dark copy of the text offset by 1dp underneath the real one. Keeps text legible
+ * when the background opacity is low and the wallpaper shows through.
+ */
+@Composable
+fun ShadowText(
+    text: String,
+    style: TextStyle,
+    maxLines: Int = Int.MAX_VALUE,
+    modifier: GlanceModifier = GlanceModifier,
+) {
+    val shadowStyle = TextStyle(
+        color = ColorProvider(Color(0xB3000000)),
+        fontSize = style.fontSize,
+        fontWeight = style.fontWeight,
+        fontStyle = style.fontStyle,
+        textAlign = style.textAlign,
+        textDecoration = style.textDecoration,
+    )
+    Box(modifier = modifier) {
+        Text(
+            text = text,
+            style = shadowStyle,
+            maxLines = maxLines,
+            modifier = GlanceModifier.padding(start = 1.dp, top = 1.dp),
+        )
+        Text(text = text, style = style, maxLines = maxLines)
+    }
+}
+
 @Composable
 fun MoneyText(money: Money?, fontSizeSp: Int, withSign: Boolean = false) {
     val amount = money?.amount ?: 0.0
-    Text(
+    ShadowText(
         text = com.basauri.ftmowidget.data.Format.money(money, withSign = withSign),
+        maxLines = 1,
         style = TextStyle(
             color = ColorProvider(WidgetTheme.colorForAmount(amount)),
             fontSize = fontSizeSp.sp,
