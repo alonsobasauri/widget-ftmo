@@ -34,11 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.basauri.ftmowidget.R
 import com.basauri.ftmowidget.data.FtmoClient
 import com.basauri.ftmowidget.data.FtmoRepository
 import com.basauri.ftmowidget.data.ShareUrlParser
+import com.basauri.ftmowidget.widget.FtmoWidget
 import com.basauri.ftmowidget.work.RefreshWorker
 import kotlinx.coroutines.launch
 
@@ -162,6 +164,9 @@ private fun ConfigScreen(
                 scope.launch {
                     repository.setIdentity(id)
                     repository.setBackgroundAlpha(alpha)
+                    // Re-render directly so the new opacity applies immediately,
+                    // without waiting on the network-constrained refresh worker.
+                    FtmoWidget().updateAll(context)
                     onSaved()
                 }
             }) { Text(saveText) }
