@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -89,6 +90,7 @@ private fun ConfigScreen(
     var url by remember { mutableStateOf(TextFieldValue("")) }
     var status by remember { mutableStateOf<String?>(null) }
     var isError by remember { mutableStateOf(false) }
+    var alpha by remember { mutableStateOf(1f) }
 
     val titleText = context.getString(R.string.config_title)
     val instructionsText = context.getString(R.string.config_instructions)
@@ -103,6 +105,7 @@ private fun ConfigScreen(
                 "https://trader.ftmo.com/live-metrix/${id.login}/share/${id.sharingCode}"
             )
         }
+        alpha = repository.backgroundAlpha()
     }
 
     Column(
@@ -158,10 +161,24 @@ private fun ConfigScreen(
                 }
                 scope.launch {
                     repository.setIdentity(id)
+                    repository.setBackgroundAlpha(alpha)
                     onSaved()
                 }
             }) { Text(saveText) }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "${context.getString(R.string.config_background_opacity)}: ${(alpha * 100).toInt()}%",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Slider(
+            value = alpha,
+            onValueChange = { alpha = it },
+            valueRange = 0f..1f,
+            steps = 19,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
         status?.let {

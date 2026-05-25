@@ -24,7 +24,8 @@ class FtmoWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = FtmoRepository(context)
         val state = resolveState(repository)
-        provideContent { WidgetSurface { Body(state) } }
+        val backgroundAlpha = repository.backgroundAlpha()
+        provideContent { WidgetSurface(backgroundAlpha) { Body(state) } }
     }
 
     @Composable
@@ -62,11 +63,11 @@ class FtmoWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun WidgetSurface(content: @Composable () -> Unit) {
+private fun WidgetSurface(backgroundAlpha: Float, content: @Composable () -> Unit) {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(WidgetTheme.Background)
+            .background(WidgetTheme.Background.copy(alpha = backgroundAlpha))
             .padding(WidgetTheme.cardPadding),
         contentAlignment = Alignment.TopStart,
     ) { content() }

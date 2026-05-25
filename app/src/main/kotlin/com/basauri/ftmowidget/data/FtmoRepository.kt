@@ -14,6 +14,8 @@ class FtmoRepository(context: Context) {
     suspend fun cachedError(): String? = store.currentError()
     suspend fun cachedRefreshing(): Boolean = store.currentRefreshing()
     suspend fun setRefreshing(value: Boolean) = store.setRefreshing(value)
+    suspend fun backgroundAlpha(): Float = store.currentBackgroundAlpha()
+    suspend fun setBackgroundAlpha(value: Float) = store.setBackgroundAlpha(value)
 
     /** Fetches and persists. Throws on failure (after persisting the error message). */
     suspend fun refresh(): WidgetSnapshot {
