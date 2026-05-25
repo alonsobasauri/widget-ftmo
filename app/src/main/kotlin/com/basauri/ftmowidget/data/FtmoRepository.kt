@@ -16,6 +16,8 @@ class FtmoRepository(context: Context) {
     suspend fun setRefreshing(value: Boolean) = store.setRefreshing(value)
     suspend fun backgroundAlpha(): Float = store.currentBackgroundAlpha()
     suspend fun setBackgroundAlpha(value: Float) = store.setBackgroundAlpha(value)
+    suspend fun refreshIntervalMinutes(): Int = store.currentRefreshIntervalMinutes()
+    suspend fun setRefreshIntervalMinutes(value: Int) = store.setRefreshIntervalMinutes(value)
 
     /** Fetches and persists. Throws on failure (after persisting the error message). */
     suspend fun refresh(): WidgetSnapshot {

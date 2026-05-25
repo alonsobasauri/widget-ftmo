@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -28,6 +29,7 @@ class AccountStore(private val context: Context) {
         val LAST_FETCH_AT = longPreferencesKey("last_fetch_at")
         val REFRESHING = booleanPreferencesKey("refreshing")
         val BACKGROUND_ALPHA = floatPreferencesKey("background_alpha")
+        val REFRESH_INTERVAL = intPreferencesKey("refresh_interval_min")
     }
 
     val identity: Flow<ShareIdentity?> = context.accountDataStore.data.map { prefs ->
@@ -88,4 +90,11 @@ class AccountStore(private val context: Context) {
 
     suspend fun currentBackgroundAlpha(): Float =
         context.accountDataStore.data.first()[Keys.BACKGROUND_ALPHA] ?: 1f
+
+    suspend fun setRefreshIntervalMinutes(value: Int) {
+        context.accountDataStore.edit { it[Keys.REFRESH_INTERVAL] = value }
+    }
+
+    suspend fun currentRefreshIntervalMinutes(): Int =
+        context.accountDataStore.data.first()[Keys.REFRESH_INTERVAL] ?: 5
 }

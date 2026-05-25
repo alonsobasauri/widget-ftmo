@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -41,6 +42,7 @@ import com.basauri.ftmowidget.data.FtmoClient
 import com.basauri.ftmowidget.data.FtmoRepository
 import com.basauri.ftmowidget.data.ShareUrlParser
 import com.basauri.ftmowidget.widget.FtmoWidget
+import com.basauri.ftmowidget.work.RefreshScheduler
 import com.basauri.ftmowidget.work.RefreshWorker
 import kotlinx.coroutines.launch
 
@@ -75,8 +77,9 @@ class ConfigActivity : ComponentActivity() {
         }
         setResult(Activity.RESULT_OK, resultIntent)
         lifecycleScope.launch {
-            RefreshWorker.scheduleRecurring(this@ConfigActivity)
-            RefreshWorker.requestImmediate(this@ConfigActivity)
+            val interval = FtmoRepository(applicationContext).refreshIntervalMinutes()
+            RefreshScheduler.schedule(applicationContext, interval)
+            RefreshWorker.requestImmediate(applicationContext)
             finish()
         }
     }
@@ -93,6 +96,7 @@ private fun ConfigScreen(
     var status by remember { mutableStateOf<String?>(null) }
     var isError by remember { mutableStateOf(false) }
     var alpha by remember { mutableStateOf(1f) }
+    var refreshInterval by remember { mutableStateOf(5) }
 
     val titleText = context.getString(R.string.config_title)
     val instructionsText = context.getString(R.string.config_instructions)
@@ -108,6 +112,7 @@ private fun ConfigScreen(
             )
         }
         alpha = repository.backgroundAlpha()
+        refreshInterval = repository.refreshIntervalMinutes()
     }
 
     Column(
@@ -164,6 +169,7 @@ private fun ConfigScreen(
                 scope.launch {
                     repository.setIdentity(id)
                     repository.setBackgroundAlpha(alpha)
+                    repository.setRefreshIntervalMinutes(refreshInterval)
                     // Re-render directly so the new opacity applies immediately,
                     // without waiting on the network-constrained refresh worker.
                     FtmoWidget().updateAll(context)
@@ -184,6 +190,24 @@ private fun ConfigScreen(
             steps = 19,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "${context.getString(R.string.config_refresh_interval)}: ${refreshInterval} min",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
+            listOf(1, 5, 15, 30, 60).forEach { minutes ->
+                if (minutes == refreshInterval) {
+                    Button(onClick = { refreshInterval = minutes }) { Text("$minutes") }
+                } else {
+                    OutlinedButton(onClick = { refreshInterval = minutes }) { Text("$minutes") }
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
         status?.let {

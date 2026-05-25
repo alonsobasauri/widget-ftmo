@@ -13,6 +13,7 @@
     <string name="config_test_ok">Connection OK · %1$s</string>
     <string name="config_test_fail">Test failed: %1$s</string>
     <string name="config_background_opacity">Background opacity</string>
+    <string name="config_refresh_interval">Refresh interval</string>
 
     <string name="widget_tap_to_configure">Tap to configure</string>
     <string name="widget_loading">Loading…</string>
