@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FTMO · Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="title">
+        <h1>FTMO Dashboard</h1>
+        <span id="phase" class="phase"></span>
+      </div>
+      <div id="account" class="account-meta"></div>
+      <div class="updated">
+        <span id="updated"></span>
+        <span id="status-dot" class="dot"></span>
+      </div>
+    </header>
+
+    <main>
+      <section id="empty" class="empty hidden">
+        <h2>Aún no hay datos</h2>
+        <p>
+          El recolector corre cada hora. Si acabas de configurarlo, dispara el
+          workflow <strong>“FTMO Dashboard”</strong> manualmente en GitHub Actions
+          para tener el primer punto sin esperar.
+        </p>
+      </section>
+
+      <section id="kpis" class="kpi-grid"></section>
+
+      <section id="charts" class="chart-grid"></section>
+
+      <section class="glossary">
+        <h2>¿Qué significa cada métrica?</h2>
+        <div id="glossary" class="glossary-grid"></div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Datos: API pública de FTMO · snapshot horario</span>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

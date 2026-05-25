@@ -1,0 +1,58 @@
+name: FTMO Dashboard
+
+on:
+  schedule:
+    # 5 past every hour (top-of-hour cron is the most congested / most delayed).
+    - cron: "5 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/dashboard.yml"
+  workflow_dispatch:
+
+# Serialize runs so concurrent snapshots never race on the gh-pages history file.
+concurrency:
+  group: dashboard-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Seed data dir from published history
+        run: |
+          mkdir -p web/data
+          git fetch origin gh-pages --depth=1 || true
+          git show origin/gh-pages:data/history.json > web/data/history.json 2>/dev/null || echo '[]' > web/data/history.json
+          git show origin/gh-pages:data/latest.json  > web/data/latest.json  2>/dev/null || true
+          [ -s web/data/history.json ] || echo '[]' > web/data/history.json
+
+      - name: Capture snapshot
+        # Never fail the deploy on a transient fetch error: the seeded prior data
+        # is preserved and republished, so a missed run just skips one point.
+        continue-on-error: true
+        env:
+          FTMO_SHARE_URL: ${{ secrets.FTMO_SHARE_URL }}
+        run: node web/scripts/snapshot.mjs web/data/history.json web/data
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web
+          publish_branch: gh-pages
+          keep_files: false
+          commit_message: "dashboard: snapshot (run ${{ github.run_number }})"
