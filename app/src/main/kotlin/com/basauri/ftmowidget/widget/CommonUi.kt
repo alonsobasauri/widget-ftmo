@@ -1,11 +1,17 @@
 package com.basauri.ftmowidget.widget
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionRunCallback
@@ -16,6 +22,7 @@ import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
@@ -461,31 +468,74 @@ fun PerfRowN(cells: List<StatCell>, valueSize: Int = 13, labelSize: Int = 10) {
 }
 
 /**
- * Bottom-aligned bar sparkline of the cumulative realized P&L across the supplied
- * days, so the recent trajectory ("climbing back" vs "sinking") reads at a glance —
- * a different view from the per-day list, not a restatement of it. Each bar is
- * coloured by whether the running total is in the green or the red at that point.
+ * Line sparkline of the cumulative realized P&L across the supplied days, so the
+ * recent trajectory ("climbing back" vs "sinking") reads at a glance — a different
+ * view from the per-day list, not a restatement of it. Glance/RemoteViews can't
+ * draw a polyline, so we render the curve to a bitmap with Canvas and show it as an
+ * Image: a real line reads as a trend where stacked bars just looked like a block.
  */
 @Composable
-fun PnlSparkline(daily: List<com.basauri.ftmowidget.data.DailyEntry>, height: Int = 34) {
-    val chrono = daily.sortedBy { it.date }.takeLast(16)
+fun PnlSparkline(daily: List<com.basauri.ftmowidget.data.DailyEntry>, height: Int = 40) {
+    val chrono = daily.sortedBy { it.date }.takeLast(20)
     if (chrono.size < 2) return
     var run = 0.0
     val cum = chrono.map { run += it.realizedProfit.amount; run }
-    val min = cum.minOrNull() ?: 0.0
-    val max = cum.maxOrNull() ?: 0.0
-    val span = (max - min).takeIf { it > 0.0 } ?: 1.0
-    Row(
+    Image(
+        provider = ImageProvider(sparklineBitmap(cum)),
+        contentDescription = null,
+        contentScale = ContentScale.FillBounds,
         modifier = GlanceModifier.fillMaxWidth().height(height.dp),
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        cum.forEachIndexed { i, v ->
-            val h = (3.0 + (v - min) / span * (height - 3)).toInt().coerceIn(2, height)
-            val color = if (v >= 0.0) WidgetTheme.Success else WidgetTheme.Danger
-            Box(modifier = GlanceModifier.defaultWeight().height(h.dp).background(color)) {}
-            if (i < cum.size - 1) Spacer(GlanceModifier.width(2.dp))
-        }
+    )
+}
+
+/**
+ * Draws [values] as a smooth polyline with a translucent fill underneath, coloured
+ * green/red by overall direction, plus a faint zero baseline when the range crosses
+ * zero. Rendered at a fixed resolution and stretched to the widget width.
+ */
+private fun sparklineBitmap(values: List<Double>): Bitmap {
+    val w = 600
+    val h = 130
+    val pad = 10f
+    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    val min = values.minOrNull() ?: 0.0
+    val max = values.maxOrNull() ?: 0.0
+    val span = (max - min).takeIf { it > 0.0 } ?: 1.0
+    val n = values.size
+    fun px(i: Int) = pad + (w - 2 * pad) * i / (n - 1)
+    fun py(v: Double) = (h - pad) - (((v - min) / span).toFloat()) * (h - 2 * pad)
+
+    val up = values.last() >= values.first()
+    val lineColor = if (up) 0xFF34D399.toInt() else 0xFFF87171.toInt()
+
+    val line = Path().apply {
+        moveTo(px(0), py(values[0]))
+        for (i in 1 until n) lineTo(px(i), py(values[i]))
     }
+    val fill = Path(line).apply {
+        lineTo(px(n - 1), h - pad)
+        lineTo(px(0), h - pad)
+        close()
+    }
+    canvas.drawPath(fill, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = (lineColor and 0x00FFFFFF) or 0x33000000
+        style = Paint.Style.FILL
+    })
+    if (min < 0.0 && max > 0.0) {
+        canvas.drawLine(pad, py(0.0), w - pad, py(0.0), Paint().apply {
+            color = 0x55FFFFFF
+            strokeWidth = 1.5f
+        })
+    }
+    canvas.drawPath(line, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = lineColor
+        style = Paint.Style.STROKE
+        strokeWidth = 5f
+        strokeJoin = Paint.Join.ROUND
+        strokeCap = Paint.Cap.ROUND
+    })
+    return bmp
 }
 
 /**
