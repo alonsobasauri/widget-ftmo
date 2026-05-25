@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-25T20:39:55.915Z",
+  "updatedAt": "2026-05-25T21:34:29.811Z",
   "login": 531303305,
   "status": "active",
   "result": null,
@@ -13,7 +13,7 @@
   "maxLossLimit": null,
   "maxDailyLossLimit": -300,
   "minTradingDays": null,
-  "t": "2026-05-25T20:39:55.915Z",
+  "t": "2026-05-25T21:34:29.811Z",
   "equity": 9653.99,
   "balance": 9653.99,
   "todayPnl": -69.13,
