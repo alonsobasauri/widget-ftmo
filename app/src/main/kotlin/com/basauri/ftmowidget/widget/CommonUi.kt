@@ -489,10 +489,11 @@ fun PnlSparkline(daily: List<com.basauri.ftmowidget.data.DailyEntry>, height: In
 }
 
 /**
- * Draws [values] as an "underwater" area chart split at break-even (zero): the line
- * and its fill are green where the cumulative total is above zero and red where it
- * is below, switching exactly where the curve crosses, with an end-point dot and a
- * faint break-even baseline. Rendered at a fixed wide aspect and stretched to width.
+ * Draws [values] as a filled area chart: a smooth polyline over a gradient fill that
+ * fades to the bottom (so the band reads full, never half-empty), coloured green
+ * when the cumulative total is currently net positive and red when net negative —
+ * flipping as the account climbs back. An end-point dot anchors the latest value and
+ * a faint break-even baseline is drawn only when the curve actually crosses zero.
  */
 private fun sparklineBitmap(values: List<Double>): Bitmap {
     val w = 720
@@ -507,52 +508,41 @@ private fun sparklineBitmap(values: List<Double>): Bitmap {
     fun px(i: Int) = pad + (w - 2 * pad) * i / (n - 1)
     fun py(v: Double) = (h - pad) - (((v - min) / span).toFloat()) * (h - 2 * pad)
 
-    val green = 0xFF34D399.toInt()
-    val red = 0xFFF87171.toInt()
-    // Break-even line: clamps to an edge when zero is outside the value range, so an
-    // all-negative window simply reads as red filling down from the top.
-    val zeroY = py(0.0).coerceIn(pad, h - pad)
+    val color = if (values.last() >= 0.0) 0xFF34D399.toInt() else 0xFFF87171.toInt()
+    val rgb = color and 0x00FFFFFF
 
     val line = Path().apply {
         moveTo(px(0), py(values[0]))
         for (i in 1 until n) lineTo(px(i), py(values[i]))
     }
-    // Area between the curve and the break-even line (not the bottom), so green
-    // sits above zero and red hangs below it.
-    val area = Path(line).apply {
-        lineTo(px(n - 1), zeroY)
-        lineTo(px(0), zeroY)
+    val fill = Path(line).apply {
+        lineTo(px(n - 1), h - pad)
+        lineTo(px(0), h - pad)
         close()
     }
-
-    fun fillPaint(color: Int) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    canvas.drawPath(fill, Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        this.color = (color and 0x00FFFFFF) or 0x4D000000
+        shader = android.graphics.LinearGradient(
+            0f, pad, 0f, h.toFloat(),
+            rgb or 0x66000000, rgb or 0x00000000,
+            android.graphics.Shader.TileMode.CLAMP,
+        )
+    })
+    if (min < 0.0 && max > 0.0) {
+        canvas.drawLine(pad, py(0.0), w - pad, py(0.0), Paint().apply {
+            color = 0x66FFFFFF
+            strokeWidth = 1.5f
+        })
     }
-    fun strokePaint(color: Int) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    canvas.drawPath(line, Paint(Paint.ANTI_ALIAS_FLAG).apply {
         this.color = color
         style = Paint.Style.STROKE
         strokeWidth = 7f
         strokeJoin = Paint.Join.ROUND
         strokeCap = Paint.Cap.ROUND
-    }
-
-    // Clip above the baseline for the green portion, below it for the red portion.
-    canvas.save(); canvas.clipRect(0f, 0f, w.toFloat(), zeroY)
-    canvas.drawPath(area, fillPaint(green)); canvas.drawPath(line, strokePaint(green))
-    canvas.restore()
-    canvas.save(); canvas.clipRect(0f, zeroY, w.toFloat(), h.toFloat())
-    canvas.drawPath(area, fillPaint(red)); canvas.drawPath(line, strokePaint(red))
-    canvas.restore()
-
-    if (min < 0.0 && max > 0.0) {
-        canvas.drawLine(pad, zeroY, w - pad, zeroY, Paint().apply {
-            color = 0x66FFFFFF
-            strokeWidth = 1.5f
-        })
-    }
+    })
     canvas.drawCircle(px(n - 1), py(values.last()), 9f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = if (values.last() >= 0.0) green else red
+        this.color = color
         style = Paint.Style.FILL
     })
     return bmp

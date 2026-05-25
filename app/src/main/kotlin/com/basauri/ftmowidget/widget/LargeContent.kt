@@ -73,13 +73,15 @@ private fun LargeContentBody(snapshot: WidgetSnapshot, staleNote: String?, refre
             Column(modifier = GlanceModifier.defaultWeight()) {
                 Text(text = context.getString(R.string.widget_equity), style = WidgetTheme.titleStyle())
                 MoneyText(stats.equity, fontSizeSp = 22)
-                Text(
-                    text = "Bal: ${Format.moneyWhole(stats.balance.amount, stats.balance.currency)}",
-                    style = TextStyle(
-                        color = ColorProvider(WidgetTheme.TextSecondary),
-                        fontSize = 11.sp,
-                    ),
-                )
+                if (kotlin.math.abs(stats.equity.amount - stats.balance.amount) >= 0.01) {
+                    Text(
+                        text = "Bal: ${Format.moneyWhole(stats.balance.amount, stats.balance.currency)}",
+                        style = TextStyle(
+                            color = ColorProvider(WidgetTheme.TextSecondary),
+                            fontSize = 11.sp,
+                        ),
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(text = context.getString(R.string.widget_today), style = WidgetTheme.titleStyle())

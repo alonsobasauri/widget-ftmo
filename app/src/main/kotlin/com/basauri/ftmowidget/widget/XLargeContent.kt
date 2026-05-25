@@ -120,11 +120,15 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
             Column(modifier = GlanceModifier.defaultWeight()) {
                 ShadowText(text = context.getString(R.string.widget_equity), maxLines = 1, style = WidgetTheme.titleStyle())
                 MoneyText(stats.equity, fontSizeSp = 22)
-                ShadowText(
-                    text = "Bal: ${Format.moneyWhole(stats.balance.amount, stats.balance.currency)}",
-                    maxLines = 1,
-                    style = TextStyle(color = ColorProvider(WidgetTheme.TextSecondary), fontSize = 11.sp),
-                )
+                // Only show balance when it differs from equity (i.e. there is open
+                // floating P&L); otherwise it just restates the equity figure.
+                if (kotlin.math.abs(stats.equity.amount - stats.balance.amount) >= 0.01) {
+                    ShadowText(
+                        text = "Bal: ${Format.moneyWhole(stats.balance.amount, stats.balance.currency)}",
+                        maxLines = 1,
+                        style = TextStyle(color = ColorProvider(WidgetTheme.TextSecondary), fontSize = 11.sp),
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 ShadowText(text = context.getString(R.string.widget_today), maxLines = 1, style = WidgetTheme.titleStyle())
