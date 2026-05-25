@@ -475,7 +475,7 @@ fun PerfRowN(cells: List<StatCell>, valueSize: Int = 13, labelSize: Int = 10) {
  * Image: a real line reads as a trend where stacked bars just looked like a block.
  */
 @Composable
-fun PnlSparkline(daily: List<com.basauri.ftmowidget.data.DailyEntry>, height: Int = 40) {
+fun PnlSparkline(daily: List<com.basauri.ftmowidget.data.DailyEntry>, height: Int = 52) {
     val chrono = daily.sortedBy { it.date }.takeLast(20)
     if (chrono.size < 2) return
     var run = 0.0
@@ -489,14 +489,15 @@ fun PnlSparkline(daily: List<com.basauri.ftmowidget.data.DailyEntry>, height: In
 }
 
 /**
- * Draws [values] as a smooth polyline with a translucent fill underneath, coloured
- * green/red by overall direction, plus a faint zero baseline when the range crosses
- * zero. Rendered at a fixed resolution and stretched to the widget width.
+ * Draws [values] as a smooth polyline with a gradient fill fading downward, an
+ * end-point dot to anchor the eye, coloured green/red by overall direction, plus a
+ * faint zero baseline when the range crosses zero. Rendered at a fixed resolution
+ * (wide aspect, matching the widget band) and stretched to the widget width.
  */
 private fun sparklineBitmap(values: List<Double>): Bitmap {
-    val w = 600
+    val w = 720
     val h = 130
-    val pad = 10f
+    val pad = 12f
     val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     val min = values.minOrNull() ?: 0.0
@@ -508,6 +509,7 @@ private fun sparklineBitmap(values: List<Double>): Bitmap {
 
     val up = values.last() >= values.first()
     val lineColor = if (up) 0xFF34D399.toInt() else 0xFFF87171.toInt()
+    val rgb = lineColor and 0x00FFFFFF
 
     val line = Path().apply {
         moveTo(px(0), py(values[0]))
@@ -519,8 +521,12 @@ private fun sparklineBitmap(values: List<Double>): Bitmap {
         close()
     }
     canvas.drawPath(fill, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = (lineColor and 0x00FFFFFF) or 0x33000000
         style = Paint.Style.FILL
+        shader = android.graphics.LinearGradient(
+            0f, pad, 0f, h.toFloat(),
+            rgb or 0x73000000, rgb or 0x00000000,
+            android.graphics.Shader.TileMode.CLAMP,
+        )
     })
     if (min < 0.0 && max > 0.0) {
         canvas.drawLine(pad, py(0.0), w - pad, py(0.0), Paint().apply {
@@ -531,9 +537,13 @@ private fun sparklineBitmap(values: List<Double>): Bitmap {
     canvas.drawPath(line, Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = lineColor
         style = Paint.Style.STROKE
-        strokeWidth = 5f
+        strokeWidth = 7f
         strokeJoin = Paint.Join.ROUND
         strokeCap = Paint.Cap.ROUND
+    })
+    canvas.drawCircle(px(n - 1), py(values.last()), 9f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = lineColor
+        style = Paint.Style.FILL
     })
     return bmp
 }
