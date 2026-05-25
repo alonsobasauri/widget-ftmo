@@ -10,6 +10,7 @@ import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -54,7 +55,12 @@ private fun XLargeBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing:
         item { HeaderAndEquity(snapshot, refreshing) }
         item { ObjectivesSection(snapshot) }
         item { PerformanceSection(snapshot) }
+        if (metrix.dailySummary.size >= 2) {
+            item { SectionRow { SectionTitle(LocalContext.current.getString(R.string.widget_equity_trend)) } }
+            item { TapRow { PnlSparkline(metrix.dailySummary) } }
+        }
         item { SectionRow { SectionTitle(LocalContext.current.getString(R.string.widget_daily_summary)) } }
+        item { TapRow { DailyHeaderRow() } }
         days.forEach { day -> item { TapRow { DailyRow(day) } } }
         if (staleNote != null) {
             item {
@@ -163,23 +169,49 @@ private fun PerformanceSection(snapshot: WidgetSnapshot) {
     SectionRow {
         SectionTitle(context.getString(R.string.widget_performance))
         Spacer(GlanceModifier.height(4.dp))
-        PerfRow(
-            StatCell("WR", Format.winRate(stats.winRate)),
-            StatCell("PF", Format.ratio(stats.profitFactor), warn = stats.profitFactor < 1.0 && stats.tradesCount > 0),
-            StatCell("Exp", Format.money(stats.expectancy, withSign = true), warn = (stats.expectancy?.amount ?: 0.0) < 0.0),
+        // Primary, glanceable stats — larger.
+        PerfRowN(
+            listOf(
+                StatCell("WR", Format.winRate(stats.winRate)),
+                StatCell("PF", Format.ratio(stats.profitFactor), warn = stats.profitFactor < 1.0 && stats.tradesCount > 0),
+                StatCell("Exp", Format.money(stats.expectancy, withSign = true), warn = (stats.expectancy?.amount ?: 0.0) < 0.0),
+                StatCell("Trades", "${stats.tradesCount}"),
+            ),
+            valueSize = 17,
+            labelSize = 10,
         )
-        Spacer(GlanceModifier.height(4.dp))
-        PerfRow(
-            StatCell("RRR", Format.ratio(stats.avgRiskToRewardRate)),
-            StatCell("Sharpe", Format.ratio(stats.sharpeRate), warn = stats.sharpeRate < 0.0),
-            StatCell("Trades", "${stats.tradesCount}"),
+        Spacer(GlanceModifier.height(6.dp))
+        // Secondary, advanced stats — compact.
+        PerfRowN(
+            listOf(
+                StatCell("RRR", Format.ratio(stats.avgRiskToRewardRate)),
+                StatCell("Sharpe", Format.ratio(stats.sharpeRate), warn = stats.sharpeRate < 0.0),
+                StatCell("Avg+", Format.money(stats.avgProfit)),
+                StatCell("Avg−", Format.money(stats.avgLoss)),
+                StatCell("Lots", Format.ratio(stats.lots)),
+            ),
+            valueSize = 11,
+            labelSize = 9,
         )
-        Spacer(GlanceModifier.height(4.dp))
-        PerfRow(
-            StatCell("Avg+", Format.money(stats.avgProfit)),
-            StatCell("Avg−", Format.money(stats.avgLoss)),
-            StatCell("Lots", Format.ratio(stats.lots)),
-        )
+    }
+}
+
+/** Column header for the daily summary, sharing widths with DailyRow so the
+ *  numeric columns line up. */
+@Composable
+private fun DailyHeaderRow() {
+    val muted = TextStyle(
+        color = ColorProvider(WidgetTheme.TextMuted),
+        fontSize = 9.sp,
+        fontWeight = FontWeight.Medium,
+    )
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth().height(14.dp)) {
+        Box(modifier = GlanceModifier.defaultWeight(), contentAlignment = Alignment.CenterStart) {
+            ShadowText(text = "Day", maxLines = 1, style = muted)
+        }
+        DailyNumCol("Trades", muted, 40.dp)
+        DailyNumCol("Lots", muted, 52.dp)
+        DailyNumCol("P&L", muted, 76.dp)
     }
 }
 
@@ -191,32 +223,39 @@ private fun DailyRow(day: DailyEntry) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier.fillMaxWidth().height(18.dp),
     ) {
-        ShadowText(
-            text = Format.shortDate(day.date),
-            maxLines = 1,
-            style = TextStyle(
-                color = ColorProvider(WidgetTheme.TextSecondary),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-            modifier = GlanceModifier.defaultWeight(),
+        Box(modifier = GlanceModifier.defaultWeight(), contentAlignment = Alignment.CenterStart) {
+            ShadowText(
+                text = Format.shortDate(day.date),
+                maxLines = 1,
+                style = TextStyle(
+                    color = ColorProvider(WidgetTheme.TextSecondary),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+            )
+        }
+        DailyNumCol(
+            "${day.tradesCount}",
+            TextStyle(color = ColorProvider(WidgetTheme.TextMuted), fontSize = 10.sp),
+            40.dp,
         )
-        ShadowText(
-            text = "${day.tradesCount}t",
-            maxLines = 1,
-            style = TextStyle(color = ColorProvider(WidgetTheme.TextMuted), fontSize = 10.sp),
+        DailyNumCol(
+            Format.ratio(day.lots),
+            TextStyle(color = ColorProvider(WidgetTheme.TextMuted), fontSize = 10.sp),
+            52.dp,
         )
-        Spacer(GlanceModifier.width(8.dp))
-        ShadowText(
-            text = Format.ratio(day.lots),
-            maxLines = 1,
-            style = TextStyle(color = ColorProvider(WidgetTheme.TextMuted), fontSize = 10.sp),
+        DailyNumCol(
+            Format.money(day.realizedProfit, withSign = true),
+            TextStyle(color = ColorProvider(color), fontSize = 11.sp, fontWeight = FontWeight.Bold),
+            76.dp,
         )
-        Spacer(GlanceModifier.width(8.dp))
-        ShadowText(
-            text = Format.money(day.realizedProfit, withSign = true),
-            maxLines = 1,
-            style = TextStyle(color = ColorProvider(color), fontSize = 11.sp, fontWeight = FontWeight.Bold),
-        )
+    }
+}
+
+/** Fixed-width, right-aligned cell so daily columns line up with their header. */
+@Composable
+private fun DailyNumCol(text: String, style: TextStyle, width: androidx.compose.ui.unit.Dp) {
+    Box(modifier = GlanceModifier.width(width), contentAlignment = Alignment.CenterEnd) {
+        ShadowText(text = text, maxLines = 1, style = style)
     }
 }

@@ -421,16 +421,22 @@ fun BufferRow(
 
 data class StatCell(val label: String, val value: String, val warn: Boolean = false)
 
-/** Single cell in the 3×3 performance grid. */
+/** Single cell in the performance grid; value/label font sizes are tunable so the
+ *  primary stats can read larger than the secondary ones. */
 @Composable
-fun StatTile(cell: StatCell, modifier: GlanceModifier = GlanceModifier) {
+fun StatTile(
+    cell: StatCell,
+    valueSize: Int = 13,
+    labelSize: Int = 10,
+    modifier: GlanceModifier = GlanceModifier,
+) {
     Column(modifier = modifier) {
         ShadowText(
             text = cell.label,
             maxLines = 1,
             style = TextStyle(
                 color = ColorProvider(WidgetTheme.TextMuted),
-                fontSize = 10.sp,
+                fontSize = labelSize.sp,
                 fontWeight = FontWeight.Medium,
             ),
         )
@@ -439,20 +445,46 @@ fun StatTile(cell: StatCell, modifier: GlanceModifier = GlanceModifier) {
             maxLines = 1,
             style = TextStyle(
                 color = ColorProvider(if (cell.warn) WidgetTheme.Warning else WidgetTheme.TextPrimary),
-                fontSize = 13.sp,
+                fontSize = valueSize.sp,
                 fontWeight = FontWeight.Bold,
             ),
         )
     }
 }
 
-/** One row in the 3×3 performance grid; each cell takes an equal share of the row. */
+/** A row of equal-width stat tiles. */
 @Composable
-fun PerfRow(a: StatCell, b: StatCell, c: StatCell) {
+fun PerfRowN(cells: List<StatCell>, valueSize: Int = 13, labelSize: Int = 10) {
     Row(modifier = GlanceModifier.fillMaxWidth()) {
-        StatTile(a, modifier = GlanceModifier.defaultWeight())
-        StatTile(b, modifier = GlanceModifier.defaultWeight())
-        StatTile(c, modifier = GlanceModifier.defaultWeight())
+        cells.forEach { StatTile(it, valueSize, labelSize, GlanceModifier.defaultWeight()) }
+    }
+}
+
+/**
+ * Bottom-aligned bar sparkline of the cumulative realized P&L across the supplied
+ * days, so the recent trajectory ("climbing back" vs "sinking") reads at a glance —
+ * a different view from the per-day list, not a restatement of it. Each bar is
+ * coloured by whether the running total is in the green or the red at that point.
+ */
+@Composable
+fun PnlSparkline(daily: List<com.basauri.ftmowidget.data.DailyEntry>, height: Int = 34) {
+    val chrono = daily.sortedBy { it.date }.takeLast(16)
+    if (chrono.size < 2) return
+    var run = 0.0
+    val cum = chrono.map { run += it.realizedProfit.amount; run }
+    val min = cum.minOrNull() ?: 0.0
+    val max = cum.maxOrNull() ?: 0.0
+    val span = (max - min).takeIf { it > 0.0 } ?: 1.0
+    Row(
+        modifier = GlanceModifier.fillMaxWidth().height(height.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        cum.forEachIndexed { i, v ->
+            val h = (3.0 + (v - min) / span * (height - 3)).toInt().coerceIn(2, height)
+            val color = if (v >= 0.0) WidgetTheme.Success else WidgetTheme.Danger
+            Box(modifier = GlanceModifier.defaultWeight().height(h.dp).background(color)) {}
+            if (i < cum.size - 1) Spacer(GlanceModifier.width(2.dp))
+        }
     }
 }
 

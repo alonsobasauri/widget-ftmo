@@ -28,6 +28,7 @@
     <string name="widget_daily_summary">Daily Summary</string>
     <string name="widget_objectives">Objectives</string>
     <string name="widget_performance">Performance</string>
+    <string name="widget_equity_trend">Equity Trend</string>
     <string name="widget_status_active">Active</string>
     <string name="widget_status_passed">Passed</string>
     <string name="widget_status_failed">Failed</string>
