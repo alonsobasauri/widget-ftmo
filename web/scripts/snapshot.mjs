@@ -156,9 +156,19 @@ async function main() {
     console.error("Usage: node snapshot.mjs <priorHistoryFile> <outDir>");
     process.exit(2);
   }
-  const id = parseShare(process.env.FTMO_SHARE_URL);
+  const raw = (process.env.FTMO_SHARE_URL || "").trim().replace(/^["']|["']$/g, "");
+  const id = parseShare(raw);
   if (!id) {
-    console.error("FTMO_SHARE_URL secret missing or unparseable (need login + sharing code).");
+    // Safe diagnostics: never print the value, only its shape, so we can tell why
+    // the regex (login digits + UUID sharing code) did not match.
+    const hasLogin = /\d{4,}/.test(raw);
+    const hasUuid =
+      /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/.test(raw);
+    console.error(
+      `FTMO_SHARE_URL did not parse. diag: empty=${raw.length === 0} length=${raw.length} ` +
+        `has4digitLogin=${hasLogin} hasUUIDcode=${hasUuid}. ` +
+        `Expected the SHARE link, e.g. https://trader.ftmo.com/live-metrix/<login>/share/<uuid>`
+    );
     process.exit(2);
   }
 
