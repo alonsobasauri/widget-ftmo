@@ -489,11 +489,11 @@ fun PnlSparkline(daily: List<com.basauri.ftmowidget.data.DailyEntry>, height: In
 }
 
 /**
- * Draws [values] as a filled area chart: a smooth polyline over a gradient fill that
- * fades to the bottom (so the band reads full, never half-empty), coloured green
- * when the cumulative total is currently net positive and red when net negative —
- * flipping as the account climbs back. An end-point dot anchors the latest value and
- * a faint break-even baseline is drawn only when the curve actually crosses zero.
+ * Draws [values] as a filled area chart whose direction encodes state: when net
+ * negative the line is red and its fill rises toward the top ("in the red"); when net
+ * positive the line is green and the fill drops toward the bottom. An end-point dot
+ * anchors the latest value and a faint break-even baseline is drawn only when the
+ * curve actually crosses zero.
  */
 private fun sparklineBitmap(values: List<Double>): Bitmap {
     val w = 720
@@ -508,23 +508,27 @@ private fun sparklineBitmap(values: List<Double>): Bitmap {
     fun px(i: Int) = pad + (w - 2 * pad) * i / (n - 1)
     fun py(v: Double) = (h - pad) - (((v - min) / span).toFloat()) * (h - 2 * pad)
 
-    val lineColor = if (values.last() >= 0.0) 0xFF34D399.toInt() else 0xFFF87171.toInt()
+    val losing = values.last() < 0.0
+    val lineColor = if (losing) 0xFFF87171.toInt() else 0xFF34D399.toInt()
     val rgb = lineColor and 0x00FFFFFF
 
     val line = Path().apply {
         moveTo(px(0), py(values[0]))
         for (i in 1 until n) lineTo(px(i), py(values[i]))
     }
+    // Losses fill upward (red above the line); gains fill downward (green below it).
+    val anchorY = if (losing) pad else h - pad
     val fill = Path(line).apply {
-        lineTo(px(n - 1), h - pad)
-        lineTo(px(0), h - pad)
+        lineTo(px(n - 1), anchorY)
+        lineTo(px(0), anchorY)
         close()
     }
     canvas.drawPath(fill, Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         shader = android.graphics.LinearGradient(
-            0f, pad, 0f, h.toFloat(),
-            rgb or 0x66000000, rgb or 0x00000000,
+            0f, pad, 0f, h - pad,
+            if (losing) rgb or 0x73000000 else rgb or 0x00000000,
+            if (losing) rgb or 0x00000000 else rgb or 0x73000000,
             android.graphics.Shader.TileMode.CLAMP,
         )
     })
