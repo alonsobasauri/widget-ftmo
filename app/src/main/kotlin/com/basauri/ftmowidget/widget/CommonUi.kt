@@ -508,8 +508,8 @@ private fun sparklineBitmap(values: List<Double>): Bitmap {
     fun px(i: Int) = pad + (w - 2 * pad) * i / (n - 1)
     fun py(v: Double) = (h - pad) - (((v - min) / span).toFloat()) * (h - 2 * pad)
 
-    val color = if (values.last() >= 0.0) 0xFF34D399.toInt() else 0xFFF87171.toInt()
-    val rgb = color and 0x00FFFFFF
+    val lineColor = if (values.last() >= 0.0) 0xFF34D399.toInt() else 0xFFF87171.toInt()
+    val rgb = lineColor and 0x00FFFFFF
 
     val line = Path().apply {
         moveTo(px(0), py(values[0]))
@@ -535,14 +535,14 @@ private fun sparklineBitmap(values: List<Double>): Bitmap {
         })
     }
     canvas.drawPath(line, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        this.color = color
+        color = lineColor
         style = Paint.Style.STROKE
         strokeWidth = 7f
         strokeJoin = Paint.Join.ROUND
         strokeCap = Paint.Cap.ROUND
     })
     canvas.drawCircle(px(n - 1), py(values.last()), 9f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        this.color = color
+        color = lineColor
         style = Paint.Style.FILL
     })
     return bmp
