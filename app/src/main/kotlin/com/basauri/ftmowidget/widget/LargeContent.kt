@@ -26,15 +26,8 @@ import com.basauri.ftmowidget.data.DayPoint
 import com.basauri.ftmowidget.data.Format
 
 @Composable
-fun LargeContent(state: WidgetState) {
-    when (state) {
-        WidgetState.Unconfigured -> UnconfiguredCard()
-        WidgetState.Loading -> LoadingCard()
-        is WidgetState.Error -> if (state.cached != null) {
-            LargeContentBody(state.cached, staleNote = state.message, refreshing = state.refreshing)
-        } else ErrorCard(state.message)
-        is WidgetState.Ready -> LargeContentBody(state.snapshot, staleNote = null, refreshing = state.refreshing)
-    }
+fun LargeContent(state: WidgetState) = SingleAccountScaffold(state) { snapshot, staleNote, refreshing ->
+    LargeContentBody(snapshot, staleNote, refreshing)
 }
 
 @Composable

@@ -8,6 +8,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalSize
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
@@ -16,6 +17,7 @@ import androidx.glance.layout.Box
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
 import com.basauri.ftmowidget.data.AccountRepository
+import com.basauri.ftmowidget.data.WidgetBinding
 
 class FtmoWidget : GlanceAppWidget() {
 
@@ -23,7 +25,8 @@ class FtmoWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = AccountRepository(context)
-        val state = resolveState(repository)
+        val appWidgetId = runCatching { GlanceAppWidgetManager(context).getAppWidgetId(id) }.getOrNull()
+        val state = resolveState(repository, appWidgetId)
         val backgroundAlpha = repository.backgroundAlpha()
         provideContent { WidgetSurface(backgroundAlpha) { Body(state) } }
     }
@@ -31,6 +34,12 @@ class FtmoWidget : GlanceAppWidget() {
     @Composable
     private fun Body(state: WidgetState) {
         val size = LocalSize.current
+        // The stacked list needs its own layout; the single-account layouts
+        // don't degrade into it.
+        if (state is WidgetState.Multi) {
+            MultiContent(state, size)
+            return
+        }
         when {
             size.width >= XLARGE.width && size.height >= XLARGE.height -> XLargeContent(state)
             size.width >= LARGE.width && size.height >= LARGE.height -> LargeContent(state)
@@ -39,17 +48,25 @@ class FtmoWidget : GlanceAppWidget() {
         }
     }
 
-    private suspend fun resolveState(repository: AccountRepository): WidgetState {
-        repository.currentIdentity() ?: return WidgetState.Unconfigured
-        val cached = repository.cachedSnapshot()
-        val error = repository.cachedError()
+    /**
+     * Resolves which account(s) this particular placed widget shows.
+     *
+     * Widgets configured before per-widget binding existed have no stored
+     * binding; they fall back to the first account, which is the one they were
+     * already showing.
+     */
+    private suspend fun resolveState(repository: AccountRepository, appWidgetId: Int?): WidgetState {
+        val views = repository.views()
+        if (views.isEmpty()) return WidgetState.Unconfigured
         val refreshing = repository.cachedRefreshing()
-        return when {
-            error != null && cached == null -> WidgetState.Error(error, null, refreshing)
-            error != null -> WidgetState.Error(error, cached, refreshing)
-            cached != null -> WidgetState.Ready(cached, refreshing)
-            else -> WidgetState.Loading
+        val binding = appWidgetId?.let { repository.binding(it) }
+
+        if (binding == WidgetBinding.ALL) {
+            return WidgetState.Multi(views, refreshing)
         }
+        val view = views.firstOrNull { it.ref.id == binding } ?: views.first()
+        if (view.snapshot == null && view.error == null) return WidgetState.Loading
+        return WidgetState.Single(view, refreshing)
     }
 
     companion object {

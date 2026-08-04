@@ -26,7 +26,7 @@ class RefreshWorker(
         val repository = AccountRepository(applicationContext)
         repository.setRefreshing(true)
         return try {
-            repository.refresh()
+            repository.refreshAll()
             Result.success()
         } catch (t: Throwable) {
             if (runAttemptCount < 2) Result.retry() else Result.success()

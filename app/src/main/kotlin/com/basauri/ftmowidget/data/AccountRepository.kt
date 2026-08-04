@@ -5,12 +5,18 @@ import android.content.Context
 class AccountRepository(context: Context) {
     private val store = AccountStore(context.applicationContext)
 
-    suspend fun currentIdentity(): Identity? = store.currentIdentity()
-    suspend fun setIdentity(id: Identity) = store.saveIdentity(id)
+    suspend fun accounts(): List<AccountRef> = store.accounts()
+    suspend fun addAccount(identity: Identity, label: String? = null): AccountRef =
+        store.addAccount(identity, label)
+    suspend fun removeAccount(accountId: String) = store.removeAccount(accountId)
     suspend fun clear() = store.clear()
 
-    suspend fun cachedSnapshot(): AccountSnapshot? = store.currentSnapshot()
-    suspend fun cachedError(): String? = store.currentError()
+    suspend fun views(): List<AccountView> = store.views(store.accounts())
+
+    suspend fun binding(appWidgetId: Int): String? = store.binding(appWidgetId)
+    suspend fun setBinding(appWidgetId: Int, value: String) = store.setBinding(appWidgetId, value)
+    suspend fun clearBinding(appWidgetId: Int) = store.clearBinding(appWidgetId)
+
     suspend fun cachedRefreshing(): Boolean = store.currentRefreshing()
     suspend fun setRefreshing(value: Boolean) = store.setRefreshing(value)
     suspend fun backgroundAlpha(): Float = store.currentBackgroundAlpha()
@@ -18,17 +24,34 @@ class AccountRepository(context: Context) {
     suspend fun refreshIntervalMinutes(): Int = store.currentRefreshIntervalMinutes()
     suspend fun setRefreshIntervalMinutes(value: Int) = store.setRefreshIntervalMinutes(value)
 
-    /** Fetches and persists. Throws on failure (after persisting the error message). */
-    suspend fun refresh(): AccountSnapshot {
-        val id = store.currentIdentity()
-            ?: throw IllegalStateException("Widget not configured")
-        return try {
-            val snapshot = Providers.of(id.provider).fetch(id)
-            store.saveSnapshot(snapshot)
-            snapshot
-        } catch (t: Throwable) {
-            store.saveError(t.message ?: t::class.java.simpleName)
-            throw t
+    /**
+     * Refreshes every configured account, persisting each result as it lands.
+     *
+     * Failures are recorded per account and never abort the loop: one firm being
+     * unreachable must not stop the others from updating, and a widget bound to
+     * a healthy account should not go stale because a sibling failed.
+     *
+     * Returns the number of accounts that refreshed successfully.
+     */
+    suspend fun refreshAll(): Int {
+        val refs = store.accounts()
+        if (refs.isEmpty()) throw IllegalStateException("Widget not configured")
+        var ok = 0
+        for (ref in refs) {
+            try {
+                val snapshot = Providers.of(ref.identity.provider).fetch(ref.identity)
+                store.saveSnapshot(ref.id, snapshot)
+                // Keep the stored label in step with what the firm reports, so
+                // the account list doesn't drift after a rename or an upgrade.
+                if (ref.label != snapshot.accountLabel) {
+                    store.addAccount(ref.identity, snapshot.accountLabel)
+                }
+                ok++
+            } catch (t: Throwable) {
+                store.saveError(ref.id, t.message ?: t::class.java.simpleName)
+            }
         }
+        if (ok == 0) throw IllegalStateException("All ${refs.size} account(s) failed to refresh")
+        return ok
     }
 }

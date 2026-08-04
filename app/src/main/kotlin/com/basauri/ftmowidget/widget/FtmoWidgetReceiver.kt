@@ -30,6 +30,16 @@ class FtmoWidgetReceiver : GlanceAppWidgetReceiver() {
         rescheduleAlarm(context)
     }
 
+    /** Drop per-widget account bindings so removed widgets leave nothing behind. */
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        super.onDeleted(context, appWidgetIds)
+        val app = context.applicationContext
+        runBlocking {
+            val repository = AccountRepository(app)
+            appWidgetIds.forEach { repository.clearBinding(it) }
+        }
+    }
+
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         RefreshScheduler.cancel(context)

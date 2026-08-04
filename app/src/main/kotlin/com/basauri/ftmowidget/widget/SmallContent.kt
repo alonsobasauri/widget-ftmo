@@ -25,15 +25,8 @@ import com.basauri.ftmowidget.data.AccountSnapshot
 import com.basauri.ftmowidget.data.Format
 
 @Composable
-fun SmallContent(state: WidgetState) {
-    when (state) {
-        WidgetState.Unconfigured -> UnconfiguredCard()
-        WidgetState.Loading -> LoadingCard()
-        is WidgetState.Error -> if (state.cached != null) {
-            SmallContentBody(state.cached, staleNote = state.message, refreshing = state.refreshing)
-        } else ErrorCard(state.message)
-        is WidgetState.Ready -> SmallContentBody(state.snapshot, staleNote = null, refreshing = state.refreshing)
-    }
+fun SmallContent(state: WidgetState) = SingleAccountScaffold(state) { snapshot, staleNote, refreshing ->
+    SmallContentBody(snapshot, staleNote, refreshing)
 }
 
 @Composable

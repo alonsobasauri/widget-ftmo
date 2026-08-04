@@ -31,6 +31,24 @@ target, so that bar is not drawn rather than shown empty. The same applies to
 per-stat cells — Blue Guardian publishes no Sharpe ratio or lot volume, so those
 tiles are dropped instead of printing dashes.
 
+## Multiple accounts
+
+Add as many accounts as you like in the config screen — mixing firms is fine.
+Each placed widget then chooses, independently, what it shows:
+
+- **One account.** Two widgets side by side can track two different accounts.
+  The binding is per `appWidgetId`, so it survives resizes and reboots and is
+  cleaned up when the widget is removed.
+- **All accounts, stacked.** One row per account: status dot, label, equity,
+  today's P&L, and a bar for whichever loss cap is closest to being hit — the one
+  that can end the account today. When every account shares a currency, the
+  header adds the combined equity.
+
+Reopen the config screen from the launcher (or long-press → reconfigure) to
+change what a widget shows. The refresh worker fetches every account on each
+cycle, and a firm being unreachable only marks that one account stale — the
+others still update.
+
 Tap anywhere on the widget to force-refresh. Errors keep the last good
 snapshot visible with a small `stale:` annotation so you don't lose context
 when the network blips.
@@ -67,7 +85,9 @@ firm means adding one file to `data/` and one entry to `Providers.all`.
 
 The credential is stored as a single opaque token plus a provider id, so the
 store doesn't grow a column per firm — FTMO packs its `login` and `sharingCode`
-into `login:sharingCode`, Blue Guardian's token is just its ObjectId.
+into `login:sharingCode`, Blue Guardian's token is just its ObjectId. An account
+id is derived from that pair rather than generated, so cache keys stay stable and
+adding the same link twice is a no-op.
 
 `web/scripts/providers/*.mjs` mirrors the same split on the dashboard side.
 
@@ -93,8 +113,9 @@ or via Android Studio's *Run* command.
    https://trader.ftmo.com/live-metrix/{login}/share/{sharingCode}
    https://trader.blueguardian.com/shared/{sharedId}
    ```
-   Tap **Test connection** to validate — it reports which firm was detected —
-   then **Save**.
+   Tap **Add account** — it validates the link, reports which firm was detected,
+   and adds it to the list. Repeat for as many accounts as you want, pick what
+   this widget shows, then **Save**.
 4. The widget appears on the home screen and is updated immediately, then
    every 15 minutes by `WorkManager`.
 

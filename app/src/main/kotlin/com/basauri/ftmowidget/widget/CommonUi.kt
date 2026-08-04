@@ -69,6 +69,37 @@ fun UnconfiguredCard() {
     }
 }
 
+/**
+ * Shared entry point for the four single-account layouts: unwraps the state and
+ * hands the body a snapshot plus an optional stale note, so each layout only
+ * describes its own arrangement.
+ *
+ * A cached snapshot alongside an error is not an error state — it is the last
+ * good data with a staleness annotation, which is what the widget should keep
+ * showing when the network blips.
+ */
+@Composable
+fun SingleAccountScaffold(
+    state: WidgetState,
+    body: @Composable (snapshot: AccountSnapshot, staleNote: String?, refreshing: Boolean) -> Unit,
+) {
+    when (state) {
+        WidgetState.Unconfigured -> UnconfiguredCard()
+        WidgetState.Loading -> LoadingCard()
+        is WidgetState.Single -> {
+            val snapshot = state.account.snapshot
+            if (snapshot == null) {
+                ErrorCard(state.account.error.orEmpty())
+            } else {
+                body(snapshot, state.account.error, state.refreshing)
+            }
+        }
+        // Routed to MultiContent before reaching here; render something benign
+        // rather than nothing if that ever changes.
+        is WidgetState.Multi -> LoadingCard()
+    }
+}
+
 @Composable
 fun LoadingCard() {
     val context = LocalContext.current
