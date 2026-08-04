@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FTMO Widget</string>
-    <string name="widget_label">FTMO MetriX</string>
-    <string name="widget_description">Monitor your FTMO challenge results on the home screen.</string>
+    <string name="app_name">Prop Widget</string>
+    <string name="widget_label">Prop Account</string>
+    <string name="widget_description">Monitor your FTMO or Blue Guardian account on the home screen.</string>
 
-    <string name="config_title">Configure FTMO widget</string>
-    <string name="config_instructions">Paste the public MetriX share URL from FTMO.</string>
-    <string name="config_url_hint">https://trader.ftmo.com/live-metrix/…/share/…</string>
+    <string name="config_title">Configure widget</string>
+    <string name="config_instructions">Paste your public share URL. FTMO (MetriX) and Blue Guardian are both recognised automatically.</string>
+    <string name="config_url_hint">trader.ftmo.com/live-metrix/… or trader.blueguardian.com/shared/…</string>
     <string name="config_save">Save</string>
     <string name="config_test">Test connection</string>
-    <string name="config_invalid_url">Couldn\'t find a login and share id in that URL.</string>
+    <string name="config_invalid_url">That doesn\'t look like an FTMO or Blue Guardian share link.</string>
     <string name="config_test_ok">Connection OK · %1$s</string>
     <string name="config_test_fail">Test failed: %1$s</string>
     <string name="config_background_opacity">Background opacity</string>
@@ -25,6 +25,7 @@
     <string name="widget_profit_target">Profit Target</string>
     <string name="widget_max_daily_loss">Max Daily Loss</string>
     <string name="widget_max_loss">Max Loss</string>
+    <string name="widget_min_trading_days">Min Trading Days</string>
     <string name="widget_daily_summary">Daily Summary</string>
     <string name="widget_objectives">Objectives</string>
     <string name="widget_performance">Performance</string>

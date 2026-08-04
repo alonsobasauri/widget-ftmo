@@ -22,8 +22,12 @@ class AccountStore(private val context: Context) {
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
     private object Keys {
-        val LOGIN = longPreferencesKey("login")
-        val SHARING_CODE = stringPreferencesKey("sharing_code")
+        val PROVIDER = stringPreferencesKey("provider")
+        val TOKEN = stringPreferencesKey("account_token")
+        // Superseded by PROVIDER/TOKEN; still read so an upgraded install keeps
+        // its configured FTMO account instead of falling back to Unconfigured.
+        val LEGACY_LOGIN = longPreferencesKey("login")
+        val LEGACY_SHARING_CODE = stringPreferencesKey("sharing_code")
         val LAST_SNAPSHOT = stringPreferencesKey("last_snapshot_json")
         val LAST_ERROR = stringPreferencesKey("last_error")
         val LAST_FETCH_AT = longPreferencesKey("last_fetch_at")
@@ -32,19 +36,32 @@ class AccountStore(private val context: Context) {
         val REFRESH_INTERVAL = intPreferencesKey("refresh_interval_min")
     }
 
-    val identity: Flow<ShareIdentity?> = context.accountDataStore.data.map { prefs ->
-        val login = prefs[Keys.LOGIN] ?: return@map null
-        val code = prefs[Keys.SHARING_CODE] ?: return@map null
-        ShareIdentity(login, code)
+    val identity: Flow<Identity?> = context.accountDataStore.data.map { prefs ->
+        val token = prefs[Keys.TOKEN]
+        if (token != null) {
+            val provider = prefs[Keys.PROVIDER]
+                ?.let { name -> ProviderId.entries.firstOrNull { it.name == name } }
+                ?: ProviderId.FTMO
+            return@map Identity(provider, token)
+        }
+        // Pre-multi-provider install: rebuild the FTMO identity from the old keys.
+        val login = prefs[Keys.LEGACY_LOGIN] ?: return@map null
+        val code = prefs[Keys.LEGACY_SHARING_CODE] ?: return@map null
+        Identity(ProviderId.FTMO, "$login:$code")
     }
 
-    suspend fun currentIdentity(): ShareIdentity? = identity.first()
+    suspend fun currentIdentity(): Identity? = identity.first()
 
-    suspend fun saveIdentity(identity: ShareIdentity) {
+    suspend fun saveIdentity(identity: Identity) {
         context.accountDataStore.edit { prefs ->
-            prefs[Keys.LOGIN] = identity.login
-            prefs[Keys.SHARING_CODE] = identity.sharingCode
+            prefs[Keys.PROVIDER] = identity.provider.name
+            prefs[Keys.TOKEN] = identity.token
+            prefs.remove(Keys.LEGACY_LOGIN)
+            prefs.remove(Keys.LEGACY_SHARING_CODE)
             prefs.remove(Keys.LAST_ERROR)
+            // The cached snapshot belongs to the previous account; drop it so a
+            // stale figure from another firm can't flash before the first fetch.
+            prefs.remove(Keys.LAST_SNAPSHOT)
         }
     }
 
@@ -52,7 +69,7 @@ class AccountStore(private val context: Context) {
         context.accountDataStore.edit { it.clear() }
     }
 
-    suspend fun saveSnapshot(snapshot: WidgetSnapshot) {
+    suspend fun saveSnapshot(snapshot: AccountSnapshot) {
         context.accountDataStore.edit { prefs ->
             prefs[Keys.LAST_SNAPSHOT] = json.encodeToString(snapshot)
             prefs[Keys.LAST_FETCH_AT] = snapshot.fetchedAtMillis
@@ -66,10 +83,14 @@ class AccountStore(private val context: Context) {
         }
     }
 
-    suspend fun currentSnapshot(): WidgetSnapshot? {
+    /**
+     * Snapshots cached by an older build use a different shape and simply fail
+     * to decode, which reads as "no cache yet" and triggers a fresh fetch.
+     */
+    suspend fun currentSnapshot(): AccountSnapshot? {
         val prefs = context.accountDataStore.data.first()
         val raw = prefs[Keys.LAST_SNAPSHOT] ?: return null
-        return runCatching { json.decodeFromString<WidgetSnapshot>(raw) }.getOrNull()
+        return runCatching { json.decodeFromString<AccountSnapshot>(raw) }.getOrNull()
     }
 
     suspend fun currentError(): String? =

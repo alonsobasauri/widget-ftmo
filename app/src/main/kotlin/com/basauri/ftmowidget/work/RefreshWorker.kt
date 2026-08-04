@@ -9,7 +9,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.basauri.ftmowidget.data.FtmoRepository
+import com.basauri.ftmowidget.data.AccountRepository
 import com.basauri.ftmowidget.widget.FtmoWidget
 
 /**
@@ -23,7 +23,7 @@ class RefreshWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val repository = FtmoRepository(applicationContext)
+        val repository = AccountRepository(applicationContext)
         repository.setRefreshing(true)
         return try {
             repository.refresh()

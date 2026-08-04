@@ -45,6 +45,9 @@ jobs:
         # is preserved and republished, so a missed run just skips one point.
         continue-on-error: true
         env:
+          # SHARE_URL takes precedence; FTMO_SHARE_URL is kept so the existing
+          # secret keeps working without a rename.
+          SHARE_URL: ${{ secrets.SHARE_URL }}
           FTMO_SHARE_URL: ${{ secrets.FTMO_SHARE_URL }}
         run: node web/scripts/snapshot.mjs web/data/history.json web/data
 

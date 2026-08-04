@@ -21,9 +21,8 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.basauri.ftmowidget.R
+import com.basauri.ftmowidget.data.AccountSnapshot
 import com.basauri.ftmowidget.data.Format
-import com.basauri.ftmowidget.data.WidgetSnapshot
-import com.basauri.ftmowidget.data.overallMaxLoss
 
 @Composable
 fun MediumContent(state: WidgetState) {
@@ -38,13 +37,11 @@ fun MediumContent(state: WidgetState) {
 }
 
 @Composable
-private fun MediumContentBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing: Boolean) {
+private fun MediumContentBody(snapshot: AccountSnapshot, staleNote: String?, refreshing: Boolean) {
     val context = LocalContext.current
-    val metrix = snapshot.metrix
-    val stats = metrix.statistics
-    val info = metrix.info
-    val objectives = metrix.objectives
-    val currency = metrix.currency
+    // Only three bars fit at this size; take whichever the provider reported, in
+    // the order a trader checks them.
+    val objectives = snapshot.objectives.sortedBy { it.kind.ordinal }.take(3)
 
     Column(
         modifier = GlanceModifier
@@ -60,7 +57,8 @@ private fun MediumContentBody(snapshot: WidgetSnapshot, staleNote: String?, refr
             }
             Spacer(GlanceModifier.defaultWeight())
             Text(
-                text = "#${metrix.login}",
+                text = snapshot.accountLabel,
+                maxLines = 1,
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.TextMuted),
                     fontSize = 10.sp,
@@ -72,35 +70,19 @@ private fun MediumContentBody(snapshot: WidgetSnapshot, staleNote: String?, refr
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
             Column(modifier = GlanceModifier.defaultWeight()) {
                 Text(text = context.getString(R.string.widget_equity), style = WidgetTheme.titleStyle())
-                MoneyText(stats.equity, fontSizeSp = 20)
+                MoneyText(snapshot.equity, snapshot.currency, fontSizeSp = 20)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(text = context.getString(R.string.widget_today), style = WidgetTheme.titleStyle())
-                MoneyText(info.todaysProfit ?: info.todaysRealizedProfit, fontSizeSp = 16, withSign = true)
+                MoneyText(snapshot.todaysProfit, snapshot.currency, fontSizeSp = 16, withSign = true)
             }
         }
         Spacer(GlanceModifier.height(10.dp))
 
-        ObjectiveRow(
-            label = context.getString(R.string.widget_profit_target),
-            objective = objectives.profit,
-            currency = currency,
-            trackWidth = 200.dp,
-        )
-        Spacer(GlanceModifier.height(6.dp))
-        ObjectiveRow(
-            label = context.getString(R.string.widget_max_daily_loss),
-            objective = objectives.maxDailyLoss,
-            currency = currency,
-            trackWidth = 200.dp,
-        )
-        Spacer(GlanceModifier.height(6.dp))
-        ObjectiveRow(
-            label = context.getString(R.string.widget_max_loss),
-            objective = objectives.overallMaxLoss,
-            currency = currency,
-            trackWidth = 200.dp,
-        )
+        objectives.forEachIndexed { index, objective ->
+            if (index > 0) Spacer(GlanceModifier.height(6.dp))
+            ObjectiveBar(objective, snapshot.currency, trackWidth = 200.dp)
+        }
 
         if (staleNote != null) {
             Spacer(GlanceModifier.height(4.dp))

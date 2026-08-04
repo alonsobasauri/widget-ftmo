@@ -37,11 +37,13 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.basauri.ftmowidget.R
 import com.basauri.ftmowidget.config.ConfigActivity
+import com.basauri.ftmowidget.data.AccountObjective
+import com.basauri.ftmowidget.data.AccountSnapshot
+import com.basauri.ftmowidget.data.AccountStatus
+import com.basauri.ftmowidget.data.DayPoint
 import com.basauri.ftmowidget.data.Format
-import com.basauri.ftmowidget.data.Money
-import com.basauri.ftmowidget.data.Objective
-import com.basauri.ftmowidget.data.WidgetSnapshot
-import com.basauri.ftmowidget.data.progressRatio
+import com.basauri.ftmowidget.data.ObjectiveKind
+import com.basauri.ftmowidget.data.ObjectiveStatus
 
 @Composable
 fun UnconfiguredCard() {
@@ -119,20 +121,14 @@ fun ErrorCard(message: String) {
 }
 
 @Composable
-fun StatusBadge(snapshot: WidgetSnapshot) {
+fun StatusBadge(snapshot: AccountSnapshot) {
     val context = LocalContext.current
-    val info = snapshot.metrix.info
-    val (label, color) = when {
-        info.accountStatus.equals("active", ignoreCase = true) &&
-            info.accountResult.equals("ongoing", ignoreCase = true) ->
-            context.getString(R.string.widget_status_ongoing) to WidgetTheme.Accent
-        info.accountResult.equals("passed", ignoreCase = true) ->
-            context.getString(R.string.widget_status_passed) to WidgetTheme.Success
-        info.accountResult.equals("failed", ignoreCase = true) ->
-            context.getString(R.string.widget_status_failed) to WidgetTheme.Danger
-        info.accountStatus.equals("active", ignoreCase = true) ->
-            context.getString(R.string.widget_status_active) to WidgetTheme.Success
-        else -> (info.accountStatus ?: "—") to WidgetTheme.TextMuted
+    val (label, color) = when (snapshot.status) {
+        AccountStatus.ONGOING -> context.getString(R.string.widget_status_ongoing) to WidgetTheme.Accent
+        AccountStatus.ACTIVE -> context.getString(R.string.widget_status_active) to WidgetTheme.Success
+        AccountStatus.PASSED -> context.getString(R.string.widget_status_passed) to WidgetTheme.Success
+        AccountStatus.FAILED -> context.getString(R.string.widget_status_failed) to WidgetTheme.Danger
+        AccountStatus.UNKNOWN -> (snapshot.statusLabel ?: "—") to WidgetTheme.TextMuted
     }
     Box(
         modifier = GlanceModifier
@@ -195,21 +191,19 @@ fun MetricLabelValue(label: String, value: String, valueColor: Color = WidgetThe
 @Composable
 fun ObjectiveRow(
     label: String,
-    objective: Objective?,
+    objective: AccountObjective?,
     currency: String?,
     trackWidth: androidx.compose.ui.unit.Dp,
 ) {
-    val pct = objective?.progressRatio ?: 0.0
-    val color = when (objective?.status?.lowercase()) {
-        "passed" -> WidgetTheme.Success
-        "notpassed", "not_passed" -> WidgetTheme.Danger
-        "ineligible" -> WidgetTheme.TextMuted
+    val pct = objective?.ratio ?: 0.0
+    val color = when (objective?.status) {
+        ObjectiveStatus.PASSED -> WidgetTheme.Success
+        ObjectiveStatus.BREACHED -> WidgetTheme.Danger
+        ObjectiveStatus.INELIGIBLE -> WidgetTheme.TextMuted
         else -> WidgetTheme.Warning
     }
-    val resultMoney = objective?.result?.amount
-    val limitMoney = objective?.limit?.amount
-    val resultText = com.basauri.ftmowidget.data.Format.money(resultMoney, currency, withSign = true)
-    val limitText = com.basauri.ftmowidget.data.Format.money(limitMoney, currency)
+    val resultText = Format.money(objective?.current, currency, withSign = true)
+    val limitText = Format.money(objective?.limit, currency)
 
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -345,11 +339,11 @@ fun BidirectionalScale(pct: Float, trackHalfWidth: androidx.compose.ui.unit.Dp =
  * glance whether they are above or below zero relative to the target.
  */
 @Composable
-fun ProfitTargetRow(objective: Objective?, currency: String?, trackHalfWidth: androidx.compose.ui.unit.Dp) {
+fun ProfitTargetRow(objective: AccountObjective?, currency: String?, trackHalfWidth: androidx.compose.ui.unit.Dp) {
     val context = LocalContext.current
-    val ratio = objective?.progressRatio ?: 0.0
-    val resultText = Format.money(objective?.result?.amount, currency, withSign = true)
-    val limitText = Format.money(objective?.limit?.amount, currency)
+    val ratio = objective?.ratio ?: 0.0
+    val resultText = Format.money(objective?.current, currency, withSign = true)
+    val limitText = Format.money(objective?.limit, currency)
     val pctText = "  ${if (ratio > 0) "+" else ""}${(ratio * 100).toInt()}%"
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -374,25 +368,22 @@ fun ProfitTargetRow(objective: Objective?, currency: String?, trackHalfWidth: an
  * Buffer bar: the bar shows how much of the loss limit is consumed (green → amber
  * → red as it fills), and the figure shows how much room is *left* — the number a
  * trader actually acts on — instead of restating the loss already shown elsewhere.
- * Only a result that shares the limit's sign (an actual loss) consumes the buffer;
- * a profit leaves it full.
+ * Each provider's mapper has already resolved "consumed" for its own rules, so
+ * this only has to divide.
  */
 @Composable
-fun BufferBarRow(
+fun BufferRow(
     label: String,
-    resultAmount: Double?,
-    limitAmount: Double?,
+    objective: AccountObjective?,
     currency: String?,
     trackWidth: androidx.compose.ui.unit.Dp,
 ) {
-    val limitAbs = limitAmount?.let { kotlin.math.abs(it) }
-    val consumedAbs = if (resultAmount != null && limitAmount != null && resultAmount * limitAmount > 0.0) {
-        kotlin.math.abs(resultAmount)
-    } else 0.0
+    val limitAbs = objective?.limit
+    val consumedAbs = objective?.current ?: 0.0
     val pctAbs = if (limitAbs != null && limitAbs != 0.0) {
         (consumedAbs / limitAbs).toFloat().coerceIn(0f, 1f)
     } else 0f
-    val remaining = limitAbs?.let { (it - consumedAbs).coerceAtLeast(0.0) }
+    val remaining = objective?.remaining
     val color = when {
         pctAbs < 0.6f -> WidgetTheme.Success
         pctAbs < 0.85f -> WidgetTheme.Warning
@@ -417,14 +408,69 @@ fun BufferBarRow(
     }
 }
 
-/** Buffer bar driven straight from an FTMO objective's result/limit. */
+/**
+ * Trading-days rule: a count, not an amount, so it gets its own row rather than
+ * being forced through the money formatter.
+ */
 @Composable
-fun BufferRow(
-    label: String,
-    objective: Objective?,
+fun TradingDaysRow(objective: AccountObjective, trackWidth: androidx.compose.ui.unit.Dp) {
+    val context = LocalContext.current
+    val ratio = objective.ratio.toFloat().coerceIn(0f, 1f)
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            ShadowText(
+                text = context.getString(R.string.widget_min_trading_days),
+                maxLines = 1,
+                style = WidgetTheme.titleStyle(),
+            )
+            Spacer(GlanceModifier.defaultWeight())
+            ShadowText(
+                text = "${objective.current.toInt()} / ${objective.limit.toInt()}",
+                maxLines = 1,
+                style = TextStyle(
+                    color = ColorProvider(WidgetTheme.TextSecondary),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+            )
+        }
+        Spacer(GlanceModifier.height(4.dp))
+        ProgressBar(
+            progress = ratio,
+            color = if (objective.status == ObjectiveStatus.PASSED) WidgetTheme.Success else WidgetTheme.Warning,
+            trackWidth = trackWidth,
+        )
+    }
+}
+
+/**
+ * Renders whichever objective a provider actually reported, in the presentation
+ * that fits its kind. Letting the layouts iterate over `snapshot.objectives` this
+ * way is what keeps them provider-agnostic: a funded Blue Guardian account simply
+ * has no profit-target entry, so no empty bar is drawn for one.
+ */
+@Composable
+fun ObjectiveBar(
+    objective: AccountObjective,
     currency: String?,
     trackWidth: androidx.compose.ui.unit.Dp,
-) = BufferBarRow(label, objective?.result?.amount, objective?.limit?.amount, currency, trackWidth)
+    bidirectionalTarget: Boolean = false,
+) {
+    val context = LocalContext.current
+    when (objective.kind) {
+        ObjectiveKind.PROFIT_TARGET ->
+            if (bidirectionalTarget) {
+                ProfitTargetRow(objective, currency, trackHalfWidth = trackWidth / 2)
+            } else {
+                ObjectiveRow(context.getString(R.string.widget_profit_target), objective, currency, trackWidth)
+            }
+        ObjectiveKind.MAX_DAILY_LOSS ->
+            BufferRow(context.getString(R.string.widget_max_daily_loss), objective, currency, trackWidth)
+        ObjectiveKind.MAX_LOSS ->
+            BufferRow(context.getString(R.string.widget_max_loss), objective, currency, trackWidth)
+        ObjectiveKind.MIN_TRADING_DAYS -> TradingDaysRow(objective, trackWidth)
+    }
+}
 
 data class StatCell(val label: String, val value: String, val warn: Boolean = false)
 
@@ -475,11 +521,11 @@ fun PerfRowN(cells: List<StatCell>, valueSize: Int = 13, labelSize: Int = 10) {
  * Image: a real line reads as a trend where stacked bars just looked like a block.
  */
 @Composable
-fun PnlSparkline(daily: List<com.basauri.ftmowidget.data.DailyEntry>, height: Int = 52) {
-    val chrono = daily.sortedBy { it.date }.takeLast(20)
+fun PnlSparkline(days: List<DayPoint>, height: Int = 52) {
+    val chrono = days.filter { it.pnl != null }.sortedBy { it.date }.takeLast(20)
     if (chrono.size < 2) return
     var run = 0.0
-    val cum = chrono.map { run += it.realizedProfit.amount; run }
+    val cum = chrono.map { run += it.pnl ?: 0.0; run }
     Image(
         provider = ImageProvider(sparklineBitmap(cum)),
         contentDescription = null,
@@ -584,10 +630,10 @@ fun ShadowText(
 }
 
 @Composable
-fun MoneyText(money: Money?, fontSizeSp: Int, withSign: Boolean = false) {
-    val amount = money?.amount ?: 0.0
+fun MoneyText(value: Double?, currency: String?, fontSizeSp: Int, withSign: Boolean = false) {
+    val amount = value ?: 0.0
     ShadowText(
-        text = com.basauri.ftmowidget.data.Format.money(money, withSign = withSign),
+        text = Format.money(value, currency, withSign = withSign),
         maxLines = 1,
         style = TextStyle(
             color = ColorProvider(WidgetTheme.colorForAmount(amount)),

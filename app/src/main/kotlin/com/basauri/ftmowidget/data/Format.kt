@@ -15,13 +15,6 @@ object Format {
         minimumFractionDigits = 0
     }
 
-    fun money(money: Money?, withSign: Boolean = false): String {
-        if (money == null) return "—"
-        val amount = money.amount
-        val symbol = currencySymbol(money.currency)
-        return formatAmount(amount, symbol, withSign)
-    }
-
     fun money(value: Double?, currency: String?, withSign: Boolean = false): String {
         if (value == null) return "—"
         return formatAmount(value, currencySymbol(currency), withSign)
@@ -35,9 +28,9 @@ object Format {
         return "$sign${currencySymbol(currency)}$abs"
     }
 
-    fun percent(score: Score?, fractionDigits: Int = 2): String {
-        if (score == null) return "—"
-        val pct = if (score.type == "fraction") score.value * 100.0 else score.value
+    /** Values arrive already scaled to 0..100; each provider's mapper owns that. */
+    fun percent(pct: Double?, fractionDigits: Int = 1): String {
+        if (pct == null) return "—"
         val nf = NumberFormat.getNumberInstance(Locale.US).apply {
             maximumFractionDigits = fractionDigits
             minimumFractionDigits = fractionDigits
@@ -45,25 +38,8 @@ object Format {
         return "${nf.format(pct)}%"
     }
 
-    /**
-     * Win rate is bounded [0,100]%, but FTMO sometimes tags it `type="fraction"`
-     * while sending an already-percent value (e.g. 29.03), which percent() would
-     * blow up to 2903%. Normalize: treat <=1 as a real 0..1 fraction (scale up),
-     * anything larger as already a percent.
-     */
-    fun winRate(score: Score?, fractionDigits: Int = 1): String {
-        if (score == null) return "—"
-        var pct = score.value
-        if (pct <= 1.0) pct *= 100.0          // 0..1 fraction → percent
-        while (pct > 100.0) pct /= 100.0      // over-scaled (e.g. 2903 → 29.03)
-        val nf = NumberFormat.getNumberInstance(Locale.US).apply {
-            maximumFractionDigits = fractionDigits
-            minimumFractionDigits = fractionDigits
-        }
-        return "${nf.format(pct)}%"
-    }
-
-    fun ratio(value: Double, fractionDigits: Int = 2): String {
+    fun ratio(value: Double?, fractionDigits: Int = 2): String {
+        if (value == null) return "—"
         val nf = NumberFormat.getNumberInstance(Locale.US).apply {
             maximumFractionDigits = fractionDigits
             minimumFractionDigits = fractionDigits
@@ -98,7 +74,8 @@ object Format {
 
     fun shortDate(isoDate: String?): String {
         if (isoDate.isNullOrBlank()) return ""
-        // FTMO returns ISO yyyy-MM-dd; show "22 May" style without pulling a calendar API.
+        // Providers normalize to ISO yyyy-MM-dd; show "22 May" style without
+        // pulling in a calendar API.
         val parts = isoDate.take(10).split('-')
         if (parts.size < 3) return isoDate
         val month = MONTH_ABBR.getOrNull(parts[1].toIntOrNull()?.minus(1) ?: -1) ?: parts[1]

@@ -23,11 +23,9 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.basauri.ftmowidget.R
-import com.basauri.ftmowidget.data.DailyEntry
+import com.basauri.ftmowidget.data.AccountSnapshot
+import com.basauri.ftmowidget.data.DayPoint
 import com.basauri.ftmowidget.data.Format
-import com.basauri.ftmowidget.data.WidgetSnapshot
-import com.basauri.ftmowidget.data.overallMaxLoss
-import com.basauri.ftmowidget.data.todayPnl
 
 @Composable
 fun XLargeContent(state: WidgetState) {
@@ -42,11 +40,11 @@ fun XLargeContent(state: WidgetState) {
 }
 
 @Composable
-private fun XLargeBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing: Boolean) {
-    val metrix = snapshot.metrix
+private fun XLargeBody(snapshot: AccountSnapshot, staleNote: String?, refreshing: Boolean) {
     // The latest day is already surfaced as "Today" in the header; drop it here so
     // the log shows the days leading up to today instead of repeating it.
-    val days = metrix.dailySummary.sortedByDescending { it.date }.drop(1).take(5)
+    val days = snapshot.days.sortedByDescending { it.date }.drop(1).take(5)
+    val hasTradeColumns = days.any { it.trades != null || it.lots != null }
 
     // A flat Column generates too many RemoteViews nodes for a 4x4 widget and the
     // host silently drops the overflow. LazyColumn renders items through a collection
@@ -55,13 +53,15 @@ private fun XLargeBody(snapshot: WidgetSnapshot, staleNote: String?, refreshing:
         item { HeaderAndEquity(snapshot, refreshing) }
         item { ObjectivesSection(snapshot) }
         item { PerformanceSection(snapshot) }
-        if (metrix.dailySummary.size >= 2) {
+        if (snapshot.days.count { it.pnl != null } >= 2) {
             item { SectionRow { SectionTitle(LocalContext.current.getString(R.string.widget_equity_trend)) } }
-            item { TapRow { PnlSparkline(metrix.dailySummary) } }
+            item { TapRow { PnlSparkline(snapshot.days) } }
         }
-        item { SectionRow { SectionTitle(LocalContext.current.getString(R.string.widget_daily_summary)) } }
-        item { TapRow { DailyHeaderRow() } }
-        days.forEach { day -> item { TapRow { DailyRow(day) } } }
+        if (days.isNotEmpty()) {
+            item { SectionRow { SectionTitle(LocalContext.current.getString(R.string.widget_daily_summary)) } }
+            item { TapRow { DailyHeaderRow(hasTradeColumns) } }
+            days.forEach { day -> item { TapRow { DailyRow(day, snapshot.currency, hasTradeColumns) } } }
+        }
         if (staleNote != null) {
             item {
                 TapRow {
@@ -95,16 +95,14 @@ private fun SectionRow(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
+private fun HeaderAndEquity(snapshot: AccountSnapshot, refreshing: Boolean) {
     val context = LocalContext.current
-    val metrix = snapshot.metrix
-    val stats = metrix.statistics
     TapRow {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth()) {
             StatusBadge(snapshot)
             Spacer(GlanceModifier.defaultWeight())
             ShadowText(
-                text = "#${metrix.login} · ${metrix.platform ?: ""}",
+                text = headerLabel(snapshot),
                 maxLines = 1,
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.TextMuted),
@@ -119,12 +117,12 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
             Column(modifier = GlanceModifier.defaultWeight()) {
                 ShadowText(text = context.getString(R.string.widget_equity), maxLines = 1, style = WidgetTheme.titleStyle())
-                MoneyText(stats.equity, fontSizeSp = 22)
+                MoneyText(snapshot.equity, snapshot.currency, fontSizeSp = 22)
                 // Only show balance when it differs from equity (i.e. there is open
                 // floating P&L); otherwise it just restates the equity figure.
-                if (kotlin.math.abs(stats.equity.amount - stats.balance.amount) >= 0.01) {
+                if (kotlin.math.abs(snapshot.equity - snapshot.balance) >= 0.01) {
                     ShadowText(
-                        text = "Bal: ${Format.moneyWhole(stats.balance.amount, stats.balance.currency)}",
+                        text = "Bal: ${Format.moneyWhole(snapshot.balance, snapshot.currency)}",
                         maxLines = 1,
                         style = TextStyle(color = ColorProvider(WidgetTheme.TextSecondary), fontSize = 11.sp),
                     )
@@ -132,78 +130,65 @@ private fun HeaderAndEquity(snapshot: WidgetSnapshot, refreshing: Boolean) {
             }
             Column(horizontalAlignment = Alignment.End) {
                 ShadowText(text = context.getString(R.string.widget_today), maxLines = 1, style = WidgetTheme.titleStyle())
-                MoneyText(metrix.todayPnl, fontSizeSp = 18, withSign = true)
+                MoneyText(snapshot.todaysProfit, snapshot.currency, fontSizeSp = 18, withSign = true)
             }
         }
     }
 }
 
 @Composable
-private fun ObjectivesSection(snapshot: WidgetSnapshot) {
+private fun ObjectivesSection(snapshot: AccountSnapshot) {
     val context = LocalContext.current
-    val objectives = snapshot.metrix.objectives
-    val currency = snapshot.metrix.currency
     SectionRow {
         SectionTitle(context.getString(R.string.widget_objectives))
         Spacer(GlanceModifier.height(4.dp))
-        ProfitTargetRow(objectives.profit, currency, trackHalfWidth = 120.dp)
-        Spacer(GlanceModifier.height(6.dp))
-        // Today's realized P&L against the daily loss limit (3% of the account).
-        BufferBarRow(
-            label = context.getString(R.string.widget_max_daily_loss),
-            resultAmount = snapshot.metrix.todayPnl?.amount,
-            limitAmount = objectives.maxDailyLoss?.limit?.amount,
-            currency = currency,
-            trackWidth = 240.dp,
-        )
-        Spacer(GlanceModifier.height(6.dp))
-        BufferRow(
-            label = context.getString(R.string.widget_max_loss),
-            objective = objectives.overallMaxLoss,
-            currency = currency,
-            trackWidth = 240.dp,
-        )
+        snapshot.objectives.sortedBy { it.kind.ordinal }.forEachIndexed { index, objective ->
+            if (index > 0) Spacer(GlanceModifier.height(6.dp))
+            // Room here for the bidirectional target scale, which makes "below
+            // break-even" obvious in a way the plain bar does not.
+            ObjectiveBar(objective, snapshot.currency, trackWidth = 240.dp, bidirectionalTarget = true)
+        }
     }
 }
 
 @Composable
-private fun PerformanceSection(snapshot: WidgetSnapshot) {
+private fun PerformanceSection(snapshot: AccountSnapshot) {
     val context = LocalContext.current
-    val stats = snapshot.metrix.statistics
+    val stats = snapshot.stats
+    // Cells are dropped when the provider has no figure for them, so a Blue
+    // Guardian account shows a tighter grid instead of columns of dashes.
+    val primary = listOfNotNull(
+        stats.winRatePct?.let { StatCell("WR", Format.percent(it)) },
+        stats.profitFactor?.let {
+            StatCell("PF", Format.ratio(it), warn = it < 1.0 && (stats.tradesCount ?: 0) > 0)
+        },
+        stats.expectancy?.let { StatCell("Exp", Format.money(it, snapshot.currency, withSign = true), warn = it < 0.0) },
+        stats.tradesCount?.let { StatCell("Trades", "$it") },
+    )
+    val secondary = listOfNotNull(
+        stats.avgRiskReward?.let { StatCell("RRR", Format.ratio(it)) },
+        stats.sharpe?.let { StatCell("Sharpe", Format.ratio(it), warn = it < 0.0) },
+        stats.avgWin?.let { StatCell("Avg+", Format.money(it, snapshot.currency)) },
+        stats.avgLoss?.let { StatCell("Avg−", Format.money(it, snapshot.currency)) },
+        stats.lots?.let { StatCell("Lots", Format.ratio(it)) },
+    )
     SectionRow {
         SectionTitle(context.getString(R.string.widget_performance))
         Spacer(GlanceModifier.height(4.dp))
         // Primary, glanceable stats — larger.
-        PerfRowN(
-            listOf(
-                StatCell("WR", Format.winRate(stats.winRate)),
-                StatCell("PF", Format.ratio(stats.profitFactor), warn = stats.profitFactor < 1.0 && stats.tradesCount > 0),
-                StatCell("Exp", Format.money(stats.expectancy, withSign = true), warn = (stats.expectancy?.amount ?: 0.0) < 0.0),
-                StatCell("Trades", "${stats.tradesCount}"),
-            ),
-            valueSize = 17,
-            labelSize = 10,
-        )
-        Spacer(GlanceModifier.height(6.dp))
-        // Secondary, advanced stats — compact.
-        PerfRowN(
-            listOf(
-                StatCell("RRR", Format.ratio(stats.avgRiskToRewardRate)),
-                StatCell("Sharpe", Format.ratio(stats.sharpeRate), warn = stats.sharpeRate < 0.0),
-                StatCell("Avg+", Format.money(stats.avgProfit)),
-                StatCell("Avg−", Format.money(stats.avgLoss)),
-                StatCell("Lots", Format.ratio(stats.lots)),
-            ),
-            valueSize = 11,
-            labelSize = 9,
-        )
+        if (primary.isNotEmpty()) PerfRowN(primary, valueSize = 17, labelSize = 10)
+        if (secondary.isNotEmpty()) {
+            Spacer(GlanceModifier.height(6.dp))
+            // Secondary, advanced stats — compact.
+            PerfRowN(secondary, valueSize = 11, labelSize = 9)
+        }
     }
 }
 
 /** Column header for the daily summary, sharing widths with DailyRow so the
  *  numeric columns line up. */
 @Composable
-private fun DailyHeaderRow() {
+private fun DailyHeaderRow(withTradeColumns: Boolean) {
     val muted = TextStyle(
         color = ColorProvider(WidgetTheme.TextMuted),
         fontSize = 9.sp,
@@ -213,16 +198,19 @@ private fun DailyHeaderRow() {
         Box(modifier = GlanceModifier.defaultWeight(), contentAlignment = Alignment.CenterStart) {
             ShadowText(text = "Day", maxLines = 1, style = muted)
         }
-        DailyNumCol("Trades", muted, 40.dp)
-        DailyNumCol("Lots", muted, 52.dp)
+        if (withTradeColumns) {
+            DailyNumCol("Trades", muted, 40.dp)
+            DailyNumCol("Lots", muted, 52.dp)
+        }
         DailyNumCol("P&L", muted, 76.dp)
     }
 }
 
 @Composable
-private fun DailyRow(day: DailyEntry) {
-    val amount = day.realizedProfit.amount
+private fun DailyRow(day: DayPoint, currency: String?, withTradeColumns: Boolean) {
+    val amount = day.pnl ?: 0.0
     val color = WidgetTheme.colorForAmount(amount)
+    val muted = TextStyle(color = ColorProvider(WidgetTheme.TextMuted), fontSize = 10.sp)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = GlanceModifier.fillMaxWidth().height(18.dp),
@@ -238,18 +226,12 @@ private fun DailyRow(day: DailyEntry) {
                 ),
             )
         }
+        if (withTradeColumns) {
+            DailyNumCol(day.trades?.toString() ?: "—", muted, 40.dp)
+            DailyNumCol(Format.ratio(day.lots), muted, 52.dp)
+        }
         DailyNumCol(
-            "${day.tradesCount}",
-            TextStyle(color = ColorProvider(WidgetTheme.TextMuted), fontSize = 10.sp),
-            40.dp,
-        )
-        DailyNumCol(
-            Format.ratio(day.lots),
-            TextStyle(color = ColorProvider(WidgetTheme.TextMuted), fontSize = 10.sp),
-            52.dp,
-        )
-        DailyNumCol(
-            Format.money(day.realizedProfit, withSign = true),
+            Format.money(day.pnl, currency, withSign = true),
             TextStyle(color = ColorProvider(color), fontSize = 11.sp, fontWeight = FontWeight.Bold),
             76.dp,
         )

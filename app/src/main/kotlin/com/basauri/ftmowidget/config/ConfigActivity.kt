@@ -38,9 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.basauri.ftmowidget.R
-import com.basauri.ftmowidget.data.FtmoClient
-import com.basauri.ftmowidget.data.FtmoRepository
-import com.basauri.ftmowidget.data.ShareUrlParser
+import com.basauri.ftmowidget.data.AccountRepository
+import com.basauri.ftmowidget.data.Providers
 import com.basauri.ftmowidget.widget.FtmoWidget
 import com.basauri.ftmowidget.work.RefreshScheduler
 import com.basauri.ftmowidget.work.RefreshWorker
@@ -58,7 +57,7 @@ class ConfigActivity : ComponentActivity() {
         ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
         setResult(Activity.RESULT_CANCELED)
 
-        val repository = FtmoRepository(applicationContext)
+        val repository = AccountRepository(applicationContext)
         setContent {
             MaterialTheme {
                 Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
@@ -77,7 +76,7 @@ class ConfigActivity : ComponentActivity() {
         }
         setResult(Activity.RESULT_OK, resultIntent)
         lifecycleScope.launch {
-            val interval = FtmoRepository(applicationContext).refreshIntervalMinutes()
+            val interval = AccountRepository(applicationContext).refreshIntervalMinutes()
             RefreshScheduler.schedule(applicationContext, interval)
             RefreshWorker.requestImmediate(applicationContext)
             finish()
@@ -87,7 +86,7 @@ class ConfigActivity : ComponentActivity() {
 
 @Composable
 private fun ConfigScreen(
-    repository: FtmoRepository,
+    repository: AccountRepository,
     onSaved: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -107,9 +106,7 @@ private fun ConfigScreen(
 
     LaunchedEffect(Unit) {
         repository.currentIdentity()?.let { id ->
-            url = TextFieldValue(
-                "https://trader.ftmo.com/live-metrix/${id.login}/share/${id.sharingCode}"
-            )
+            url = TextFieldValue(Providers.of(id.provider).shareUrl(id))
         }
         alpha = repository.backgroundAlpha()
         refreshInterval = repository.refreshIntervalMinutes()
@@ -135,18 +132,21 @@ private fun ConfigScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {
-                val id = ShareUrlParser.parse(url.text)
+                val id = Providers.parse(url.text)
                 if (id == null) {
                     isError = true
                     status = invalidUrlText
                     return@OutlinedButton
                 }
+                val provider = Providers.of(id.provider)
                 scope.launch {
                     status = "Testing…"
-                    runCatching { FtmoClient().fetchMetrix(id.login, id.sharingCode) }
-                        .onSuccess { resp ->
-                            val acc = resp.info.accountProductType ?: "FTMO"
-                            status = context.getString(R.string.config_test_ok, acc)
+                    runCatching { provider.fetch(id) }
+                        .onSuccess { snapshot ->
+                            status = context.getString(
+                                R.string.config_test_ok,
+                                "${provider.displayName} · ${snapshot.accountLabel}",
+                            )
                             isError = false
                         }
                         .onFailure { t ->
@@ -160,7 +160,7 @@ private fun ConfigScreen(
             }) { Text(testText) }
 
             Button(onClick = {
-                val id = ShareUrlParser.parse(url.text)
+                val id = Providers.parse(url.text)
                 if (id == null) {
                     isError = true
                     status = invalidUrlText

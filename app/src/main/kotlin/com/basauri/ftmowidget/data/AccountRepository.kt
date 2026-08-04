@@ -2,15 +2,14 @@ package com.basauri.ftmowidget.data
 
 import android.content.Context
 
-class FtmoRepository(context: Context) {
+class AccountRepository(context: Context) {
     private val store = AccountStore(context.applicationContext)
-    private val client = FtmoClient()
 
-    suspend fun currentIdentity(): ShareIdentity? = store.currentIdentity()
-    suspend fun setIdentity(id: ShareIdentity) = store.saveIdentity(id)
+    suspend fun currentIdentity(): Identity? = store.currentIdentity()
+    suspend fun setIdentity(id: Identity) = store.saveIdentity(id)
     suspend fun clear() = store.clear()
 
-    suspend fun cachedSnapshot(): WidgetSnapshot? = store.currentSnapshot()
+    suspend fun cachedSnapshot(): AccountSnapshot? = store.currentSnapshot()
     suspend fun cachedError(): String? = store.currentError()
     suspend fun cachedRefreshing(): Boolean = store.currentRefreshing()
     suspend fun setRefreshing(value: Boolean) = store.setRefreshing(value)
@@ -20,17 +19,11 @@ class FtmoRepository(context: Context) {
     suspend fun setRefreshIntervalMinutes(value: Int) = store.setRefreshIntervalMinutes(value)
 
     /** Fetches and persists. Throws on failure (after persisting the error message). */
-    suspend fun refresh(): WidgetSnapshot {
+    suspend fun refresh(): AccountSnapshot {
         val id = store.currentIdentity()
             ?: throw IllegalStateException("Widget not configured")
         return try {
-            val metrix = client.fetchMetrix(id.login, id.sharingCode)
-            val snapshot = WidgetSnapshot(
-                login = id.login,
-                sharingCode = id.sharingCode,
-                fetchedAtMillis = System.currentTimeMillis(),
-                metrix = metrix,
-            )
+            val snapshot = Providers.of(id.provider).fetch(id)
             store.saveSnapshot(snapshot)
             snapshot
         } catch (t: Throwable) {

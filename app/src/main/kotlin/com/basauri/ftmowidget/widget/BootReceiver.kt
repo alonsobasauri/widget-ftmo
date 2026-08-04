@@ -5,7 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import com.basauri.ftmowidget.data.FtmoRepository
+import com.basauri.ftmowidget.data.AccountRepository
 import com.basauri.ftmowidget.work.RefreshScheduler
 import kotlinx.coroutines.runBlocking
 
@@ -22,7 +22,7 @@ class BootReceiver : BroadcastReceiver() {
                 val ids = AppWidgetManager.getInstance(app)
                     .getAppWidgetIds(ComponentName(app, FtmoWidgetReceiver::class.java))
                 if (ids.isEmpty()) return
-                val interval = runBlocking { FtmoRepository(app).refreshIntervalMinutes() }
+                val interval = runBlocking { AccountRepository(app).refreshIntervalMinutes() }
                 RefreshScheduler.schedule(app, interval)
             }
         }

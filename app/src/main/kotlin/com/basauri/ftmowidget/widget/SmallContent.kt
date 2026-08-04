@@ -21,6 +21,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.basauri.ftmowidget.R
+import com.basauri.ftmowidget.data.AccountSnapshot
 import com.basauri.ftmowidget.data.Format
 
 @Composable
@@ -37,14 +38,11 @@ fun SmallContent(state: WidgetState) {
 
 @Composable
 private fun SmallContentBody(
-    snapshot: com.basauri.ftmowidget.data.WidgetSnapshot,
+    snapshot: AccountSnapshot,
     staleNote: String?,
     refreshing: Boolean,
 ) {
     val context = LocalContext.current
-    val metrix = snapshot.metrix
-    val equity = metrix.statistics.equity
-    val today = metrix.info.todaysProfit ?: metrix.info.todaysRealizedProfit
 
     Column(
         modifier = GlanceModifier
@@ -59,7 +57,8 @@ private fun SmallContentBody(
             }
             Spacer(GlanceModifier.defaultWeight())
             Text(
-                text = "#${metrix.login}",
+                text = snapshot.accountLabel,
+                maxLines = 1,
                 style = TextStyle(
                     color = ColorProvider(WidgetTheme.TextMuted),
                     fontSize = 10.sp,
@@ -70,12 +69,12 @@ private fun SmallContentBody(
         Spacer(GlanceModifier.height(8.dp))
         Text(text = context.getString(R.string.widget_equity), style = WidgetTheme.titleStyle())
         Spacer(GlanceModifier.height(2.dp))
-        MoneyText(equity, fontSizeSp = 20)
+        MoneyText(snapshot.equity, snapshot.currency, fontSizeSp = 20)
         Spacer(GlanceModifier.defaultWeight())
         Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth()) {
             Text(text = context.getString(R.string.widget_today), style = WidgetTheme.titleStyle())
             Spacer(GlanceModifier.defaultWeight())
-            MoneyText(today, fontSizeSp = 14, withSign = true)
+            MoneyText(snapshot.todaysProfit, snapshot.currency, fontSizeSp = 14, withSign = true)
         }
         if (staleNote != null) {
             Text(

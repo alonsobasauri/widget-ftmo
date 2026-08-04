@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import com.basauri.ftmowidget.data.FtmoRepository
+import com.basauri.ftmowidget.data.AccountRepository
 import com.basauri.ftmowidget.work.RefreshScheduler
 import com.basauri.ftmowidget.work.RefreshWorker
 import kotlinx.coroutines.runBlocking
@@ -50,7 +50,7 @@ class FtmoWidgetReceiver : GlanceAppWidgetReceiver() {
     /** Reads the configured interval and arms the next exact alarm. */
     private fun rescheduleAlarm(context: Context) {
         val app = context.applicationContext
-        val interval = runBlocking { FtmoRepository(app).refreshIntervalMinutes() }
+        val interval = runBlocking { AccountRepository(app).refreshIntervalMinutes() }
         RefreshScheduler.schedule(app, interval)
     }
 

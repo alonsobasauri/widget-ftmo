@@ -15,14 +15,14 @@ import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
-import com.basauri.ftmowidget.data.FtmoRepository
+import com.basauri.ftmowidget.data.AccountRepository
 
 class FtmoWidget : GlanceAppWidget() {
 
     override val sizeMode: SizeMode = SizeMode.Responsive(setOf(SMALL, MEDIUM, LARGE, XLARGE))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val repository = FtmoRepository(context)
+        val repository = AccountRepository(context)
         val state = resolveState(repository)
         val backgroundAlpha = repository.backgroundAlpha()
         provideContent { WidgetSurface(backgroundAlpha) { Body(state) } }
@@ -39,7 +39,7 @@ class FtmoWidget : GlanceAppWidget() {
         }
     }
 
-    private suspend fun resolveState(repository: FtmoRepository): WidgetState {
+    private suspend fun resolveState(repository: AccountRepository): WidgetState {
         repository.currentIdentity() ?: return WidgetState.Unconfigured
         val cached = repository.cachedSnapshot()
         val error = repository.cachedError()
