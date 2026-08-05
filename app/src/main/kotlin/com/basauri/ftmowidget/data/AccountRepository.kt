@@ -1,6 +1,8 @@
 package com.basauri.ftmowidget.data
 
 import android.content.Context
+import kotlinx.coroutines.delay
+import java.io.IOException
 
 class AccountRepository(context: Context) {
     private val store = AccountStore(context.applicationContext)
@@ -53,7 +55,7 @@ class AccountRepository(context: Context) {
         var ok = 0
         for (ref in refs) {
             try {
-                val snapshot = Providers.of(ref.identity.provider).fetch(ref.identity)
+                val snapshot = fetchWithRetry(ref)
                 store.saveSnapshot(ref.id, snapshot)
                 // Keep the stored label in step with what the firm reports, so
                 // the account list doesn't drift after a rename or an upgrade.
@@ -67,5 +69,37 @@ class AccountRepository(context: Context) {
         }
         if (ok == 0) throw IllegalStateException("All ${refs.size} account(s) failed to refresh")
         return ok
+    }
+
+    /**
+     * Fetches with a short backoff on transport failures.
+     *
+     * A tap on the refresh control very often lands while the radio is still
+     * settling — coming out of Doze, or handing over between Wi-Fi and mobile —
+     * and DNS then fails with `UnknownHostException` even though the device is
+     * online moments later. OkHttp's own `retryOnConnectionFailure` does not
+     * cover DNS, so without this a single unlucky lookup marked the account
+     * stale and the user saw "Sin conexión" on a working connection.
+     *
+     * Only [IOException] is retried: a decode failure or a bad share token will
+     * fail identically every time, and retrying it just delays the error.
+     */
+    private suspend fun fetchWithRetry(ref: AccountRef): AccountSnapshot {
+        val provider = Providers.of(ref.identity.provider)
+        var last: IOException? = null
+        for (attempt in RETRY_DELAYS_MS.indices) {
+            try {
+                return provider.fetch(ref.identity)
+            } catch (e: IOException) {
+                last = e
+                RETRY_DELAYS_MS[attempt].takeIf { it > 0 }?.let { delay(it) }
+            }
+        }
+        throw last ?: IOException("Network failure")
+    }
+
+    private companion object {
+        /** Delay *after* each attempt; the trailing 0 means the last one doesn't wait. */
+        val RETRY_DELAYS_MS = longArrayOf(700, 1_800, 0)
     }
 }

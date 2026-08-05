@@ -39,6 +39,7 @@ class AccountStore(private val context: Context) {
         val LEGACY_SNAPSHOT = stringPreferencesKey("last_snapshot_json")
 
         val REFRESHING = booleanPreferencesKey("refreshing")
+        val REFRESHING_AT = longPreferencesKey("refreshing_at")
         val BACKGROUND_ALPHA = floatPreferencesKey("background_alpha")
         val REFRESH_INTERVAL = intPreferencesKey("refresh_interval_min")
 
@@ -183,12 +184,29 @@ class AccountStore(private val context: Context) {
 
     suspend fun setRefreshing(value: Boolean) {
         context.accountDataStore.edit { prefs ->
-            if (value) prefs[Keys.REFRESHING] = true else prefs.remove(Keys.REFRESHING)
+            if (value) {
+                prefs[Keys.REFRESHING] = true
+                prefs[Keys.REFRESHING_AT] = System.currentTimeMillis()
+            } else {
+                prefs.remove(Keys.REFRESHING)
+                prefs.remove(Keys.REFRESHING_AT)
+            }
         }
     }
 
-    suspend fun currentRefreshing(): Boolean =
-        context.accountDataStore.data.first()[Keys.REFRESHING] == true
+    /**
+     * The flag is set by the tap handler and cleared by the worker's `finally`.
+     * If the worker never runs — its network constraint stays unmet, or the
+     * process is killed first — nothing would ever clear it and the spinner dot
+     * would stay lit forever. Treat a flag older than [REFRESHING_TTL_MS] as
+     * stale so the widget recovers on its own.
+     */
+    suspend fun currentRefreshing(): Boolean {
+        val prefs = context.accountDataStore.data.first()
+        if (prefs[Keys.REFRESHING] != true) return false
+        val since = prefs[Keys.REFRESHING_AT] ?: return false
+        return System.currentTimeMillis() - since < REFRESHING_TTL_MS
+    }
 
     suspend fun setBackgroundAlpha(value: Float) {
         context.accountDataStore.edit { it[Keys.BACKGROUND_ALPHA] = value.coerceIn(0f, 1f) }
@@ -203,4 +221,13 @@ class AccountStore(private val context: Context) {
 
     suspend fun currentRefreshIntervalMinutes(): Int =
         context.accountDataStore.data.first()[Keys.REFRESH_INTERVAL] ?: 5
+
+    private companion object {
+        /**
+         * Generous enough to cover a slow refresh across several accounts, each
+         * of which may burn its 30s call timeout and be retried, but far short
+         * of "forever".
+         */
+        const val REFRESHING_TTL_MS = 5 * 60_000L
+    }
 }
