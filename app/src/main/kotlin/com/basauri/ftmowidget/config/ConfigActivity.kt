@@ -191,7 +191,9 @@ private fun ConfigScreen(
                     // account a real label in the list before the first refresh.
                     runCatching { provider.fetch(id) }
                         .onSuccess { snapshot ->
-                            val ref = repository.addAccount(id, snapshot.accountLabel)
+                            // Keep the snapshot this fetch produced: the account
+                            // then has data from the moment it is added.
+                            val ref = repository.addAccount(id, snapshot.accountLabel, snapshot)
                             accounts.removeAll { it.id == ref.id }
                             accounts.add(ref)
                             if (binding == null) binding = ref.id

@@ -6,8 +6,22 @@ class AccountRepository(context: Context) {
     private val store = AccountStore(context.applicationContext)
 
     suspend fun accounts(): List<AccountRef> = store.accounts()
-    suspend fun addAccount(identity: Identity, label: String? = null): AccountRef =
-        store.addAccount(identity, label)
+
+    /**
+     * Registers an account, seeding its cache with [snapshot] when the caller
+     * already has one. The config screen fetches to validate the share link, so
+     * throwing that result away would leave a brand-new account with nothing to
+     * render until the next refresh — and a bare error card if that one fails.
+     */
+    suspend fun addAccount(
+        identity: Identity,
+        label: String? = null,
+        snapshot: AccountSnapshot? = null,
+    ): AccountRef {
+        val ref = store.addAccount(identity, label)
+        if (snapshot != null) store.saveSnapshot(ref.id, snapshot)
+        return ref
+    }
     suspend fun removeAccount(accountId: String) = store.removeAccount(accountId)
     suspend fun clear() = store.clear()
 

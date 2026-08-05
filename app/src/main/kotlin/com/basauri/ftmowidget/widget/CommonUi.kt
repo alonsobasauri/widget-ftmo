@@ -89,7 +89,7 @@ fun SingleAccountScaffold(
         is WidgetState.Single -> {
             val snapshot = state.account.snapshot
             if (snapshot == null) {
-                ErrorCard(state.account.error.orEmpty())
+                ErrorCard(state.account.error, state.account.ref.displayName())
             } else {
                 body(snapshot, state.account.error, state.refreshing)
             }
@@ -115,8 +115,13 @@ fun LoadingCard() {
     }
 }
 
+/**
+ * Shown only when an account has no cached snapshot at all. [accountLabel] names
+ * which account failed — with several widgets on one screen, an unlabelled error
+ * card is impossible to place.
+ */
 @Composable
-fun ErrorCard(message: String) {
+fun ErrorCard(message: String?, accountLabel: String? = null) {
     val context = LocalContext.current
     Column(
         modifier = GlanceModifier
@@ -125,6 +130,18 @@ fun ErrorCard(message: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        if (accountLabel != null) {
+            Text(
+                text = accountLabel,
+                style = TextStyle(
+                    color = ColorProvider(WidgetTheme.TextMuted),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+                maxLines = 1,
+            )
+            Spacer(GlanceModifier.height(4.dp))
+        }
         Text(
             text = context.getString(R.string.widget_error),
             style = TextStyle(
@@ -135,7 +152,7 @@ fun ErrorCard(message: String) {
         )
         Spacer(GlanceModifier.height(4.dp))
         Text(
-            text = message.take(80),
+            text = Format.errorNote(message),
             style = WidgetTheme.secondaryStyle(),
             maxLines = 3,
         )

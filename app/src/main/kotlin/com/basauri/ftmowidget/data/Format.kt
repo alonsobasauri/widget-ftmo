@@ -63,13 +63,33 @@ object Format {
             ageMin < 60 -> "hace $ageMin min"
             else -> "hace ${ageMin / 60} h"
         }
-        val m = errorMessage?.lowercase() ?: ""
-        val offline = listOf(
+        val prefix = if (isOffline(errorMessage)) "Sin conexión" else "No actualizado"
+        return "⚠ $prefix · $age"
+    }
+
+    /**
+     * Same classification as [staleNote], for the case where there is no cached
+     * snapshot to annotate. A raw `UnknownHostException` truncated mid-sentence
+     * tells the user nothing they can act on; "Sin conexión" does.
+     */
+    fun errorNote(errorMessage: String?): String = when {
+        isOffline(errorMessage) -> "Sin conexión"
+        errorMessage.isNullOrBlank() -> "Error desconocido"
+        else -> errorMessage.take(80)
+    }
+
+    /**
+     * Recognises the transport failures that mean "the device could not reach
+     * the network", as opposed to the server answering with something bad.
+     * DNS failures are the common one on Android: the widget refreshes on a
+     * schedule, so it regularly fires while the radio is still coming back up.
+     */
+    private fun isOffline(errorMessage: String?): Boolean {
+        val m = errorMessage?.lowercase() ?: return false
+        return listOf(
             "resolve host", "unable to", "timeout", "timed out",
             "failed to connect", "no address", "unreachable", "network",
         ).any { m.contains(it) }
-        val prefix = if (offline) "Sin conexión" else "No actualizado"
-        return "⚠ $prefix · $age"
     }
 
     fun shortDate(isoDate: String?): String {
