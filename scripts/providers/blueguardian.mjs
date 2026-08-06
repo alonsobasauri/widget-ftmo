@@ -105,8 +105,21 @@ export async function fetchSnapshot(identity) {
   const maxLossLimit = num(s.maxLossLimitPnLLevel);
   const targetLevel = num(s.profitTargetRequiredPnLLevel);
 
-  const todayPnl = num(s.dailyTotalPnL);
-  const dailyConsumed = todayPnl != null && todayPnl < 0 ? Math.abs(todayPnl) : 0;
+  // The firm's own day figure: equity now vs equity at the previous close.
+  // The daily-loss objective must keep using this one - it is what the firm
+  // breaches you against.
+  const brokerDayPnl = num(s.dailyTotalPnL);
+  const dailyConsumed = brokerDayPnl != null && brokerDayPnl < 0 ? Math.abs(brokerDayPnl) : 0;
+
+  // What the widget headlines as "today": closed since the day roll, plus the
+  // whole open floating position regardless of when it was opened.
+  const realizedToday = num(s.dailyTotalRealizedPnL);
+  const floating =
+    num(s.currentEquity) != null && num(s.currentBalance) != null
+      ? s.currentEquity - s.currentBalance
+      : null;
+  const todayPnl =
+    realizedToday == null && floating == null ? null : (realizedToday ?? 0) + (floating ?? 0);
 
   // Static max loss measures the worst equity dip from the starting balance;
   // the default trailing mode uses the level the server already computed.
@@ -136,6 +149,7 @@ export async function fetchSnapshot(identity) {
       profitResult: num(s.currentProfit),
       maxLossUsedPct: pct(maxLossConsumed, maxLossLimit),
       maxDailyLossUsedPct: pct(dailyConsumed, dailyLossLimit),
+      brokerDayPnl,
       winRate: num(s.winRate),
       profitFactor: num(s.profitFactor),
       expectancy: num(s.expectancy),

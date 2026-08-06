@@ -103,10 +103,17 @@ export async function fetchSnapshot(identity) {
   // "Today" P&L: latest daily-summary entry, falling back to info fields.
   const dailyRaw = Array.isArray(metrix.dailySummary) ? metrix.dailySummary : [];
   const latestDay = dailyRaw.length ? dailyRaw.reduce((a, b) => (a.date > b.date ? a : b)) : null;
-  const todayPnl =
+  const realizedToday =
     (latestDay && moneyAmount(latestDay.realizedProfit)) ??
     moneyAmount(info.todaysProfit) ??
     moneyAmount(info.todaysRealizedProfit);
+  // Same composition as the widget: realized today plus the whole floating
+  // position, which for FTMO has to come from the equity/balance gap.
+  const eq = moneyAmount(stats.equity);
+  const bal = moneyAmount(stats.balance);
+  const floating = eq != null && bal != null ? eq - bal : null;
+  const todayPnl =
+    realizedToday == null && floating == null ? null : (realizedToday ?? 0) + (floating ?? 0);
 
   return {
     provider: id,
