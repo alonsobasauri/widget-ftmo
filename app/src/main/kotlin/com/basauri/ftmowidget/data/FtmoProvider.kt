@@ -100,7 +100,13 @@ fun MetrixResponse.toSnapshot(fetchedAtMillis: Long = System.currentTimeMillis()
         equity = statistics.equity.amount,
         balance = statistics.balance.amount,
         startingBalance = info.initialBalance?.amount,
-        todaysProfit = todayPnl?.amount,
+        todaysProfit = todaysProfit(
+            // FTMO's daily summary is realized-only, so the floating leg has to
+            // come from the equity/balance gap, same as for Blue Guardian.
+            realizedToday = todayPnl?.amount,
+            equity = statistics.equity.amount,
+            balance = statistics.balance.amount,
+        ),
         objectives = objectives,
         days = dailySummary
             .sortedBy { it.date }

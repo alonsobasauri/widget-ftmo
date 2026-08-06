@@ -25,8 +25,14 @@ data class BgStatistics(
     val currentEquity: Double = 0.0,
     val startingBalance: Double = 0.0,
 
-    /** Today's P&L as the Blue Guardian banner shows it. */
+    /**
+     * Equity now minus equity at the previous day's close. This is what the Blue
+     * Guardian banner shows, and — importantly — the basis the daily loss limit
+     * is measured against, so the objective keeps using it.
+     */
     val dailyTotalPnL: Double? = null,
+    /** Closed-trade P&L since the broker's day roll. */
+    val dailyTotalRealizedPnL: Double? = null,
     /** Cumulative P&L against the starting balance. */
     val currentProfit: Double? = null,
 

@@ -136,7 +136,11 @@ fun BgSharedResponse.toSnapshot(
         equity = s.currentEquity,
         balance = s.currentBalance,
         startingBalance = s.startingBalance.takeIf { it != 0.0 },
-        todaysProfit = s.dailyTotalPnL,
+        todaysProfit = todaysProfit(
+            realizedToday = s.dailyTotalRealizedPnL,
+            equity = s.currentEquity,
+            balance = s.currentBalance,
+        ),
         objectives = objectives,
         days = growth.toDayPoints(),
         stats = AccountStats(

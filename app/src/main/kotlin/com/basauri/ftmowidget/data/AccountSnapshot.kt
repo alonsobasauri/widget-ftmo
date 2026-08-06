@@ -26,7 +26,18 @@ data class AccountSnapshot(
     val equity: Double,
     val balance: Double,
     val startingBalance: Double? = null,
-    /** Today's P&L as the provider's own dashboard reports it. */
+    /**
+     * Today's P&L: everything closed since the broker's day roll, plus the whole
+     * open floating position regardless of when it was opened.
+     *
+     * Note this is deliberately *not* how the firms define their own daily
+     * figure. FTMO and Blue Guardian both measure the day as the change in
+     * equity since the previous close, which excludes floating carried
+     * overnight because it was already earned on a previous day. This is the
+     * "what am I holding right now, versus where the day started" reading
+     * instead. See [AccountObjective] for why the daily-loss bar does not use
+     * this number.
+     */
     val todaysProfit: Double? = null,
 
     val objectives: List<AccountObjective> = emptyList(),
@@ -37,6 +48,19 @@ data class AccountSnapshot(
     val fetchedAtMillis: Long,
 ) {
     fun objective(kind: ObjectiveKind): AccountObjective? = objectives.firstOrNull { it.kind == kind }
+}
+
+/**
+ * The widget's definition of "today": closed P&L since the broker's day roll,
+ * plus the entire current floating position, whatever its age.
+ *
+ * Returns null only when neither component is known, so a provider that reports
+ * nothing shows an em dash rather than a confident zero.
+ */
+internal fun todaysProfit(realizedToday: Double?, equity: Double?, balance: Double?): Double? {
+    val floating = if (equity != null && balance != null) equity - balance else null
+    if (realizedToday == null && floating == null) return null
+    return (realizedToday ?: 0.0) + (floating ?: 0.0)
 }
 
 @Serializable
@@ -54,6 +78,13 @@ enum class ObjectiveStatus { IN_PROGRESS, PASSED, BREACHED, INELIGIBLE }
 /**
  * One rule the account is measured against, already reduced to two comparable
  * numbers so the bars don't have to know which firm produced them.
+ *
+ * These deliberately do **not** reuse [AccountSnapshot.todaysProfit]. A firm
+ * breaches your account against its own definition of the day, so the daily-loss
+ * bar has to track the same figure the firm does — equity measured from the
+ * previous close. Feeding it the header's number instead would make the bar
+ * disagree with the rule it represents, and in the dangerous direction: floating
+ * carried in from a previous day would flatter it.
  *
  * [limit] is always a positive magnitude. [current] is signed only for
  * [ObjectiveKind.PROFIT_TARGET] — where being below zero is the interesting
