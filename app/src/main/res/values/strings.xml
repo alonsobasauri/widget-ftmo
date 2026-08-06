@@ -17,6 +17,8 @@
     <string name="config_remove">Remove</string>
     <string name="config_this_widget_shows">This widget shows</string>
     <string name="config_all_accounts">All accounts (stacked)</string>
+    <string name="config_show_launcher_icon">Show app icon in launcher</string>
+    <string name="config_launcher_icon_hint">With this off, reach these settings by long-pressing a widget and choosing reconfigure — or by placing a new one.</string>
     <string name="config_background_opacity">Background opacity</string>
     <string name="config_refresh_interval">Refresh interval</string>
 

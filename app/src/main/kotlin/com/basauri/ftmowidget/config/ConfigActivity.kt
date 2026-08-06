@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -106,6 +107,7 @@ private fun ConfigScreen(
     var busy by remember { mutableStateOf(false) }
     var alpha by remember { mutableStateOf(1f) }
     var refreshInterval by remember { mutableStateOf(5) }
+    var launcherIconVisible by remember { mutableStateOf(true) }
     // Which account this particular widget shows; WidgetBinding.ALL stacks them.
     var binding by remember { mutableStateOf<String?>(null) }
 
@@ -118,6 +120,7 @@ private fun ConfigScreen(
         refreshInterval = repository.refreshIntervalMinutes()
         binding = if (hasWidget) repository.binding(appWidgetId) else null
         if (binding == null) binding = accounts.firstOrNull()?.id
+        launcherIconVisible = LauncherIcon.isVisible(context)
     }
 
     Column(
@@ -269,6 +272,30 @@ private fun ConfigScreen(
                     OutlinedButton(onClick = { refreshInterval = minutes }) { Text("$minutes") }
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = context.getString(R.string.config_show_launcher_icon),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    // Worth stating plainly: this screen is the only way back once
+                    // the icon is gone.
+                    text = context.getString(R.string.config_launcher_icon_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = launcherIconVisible,
+                onCheckedChange = {
+                    launcherIconVisible = it
+                    LauncherIcon.setVisible(context, it)
+                },
+            )
         }
 
         status?.let {

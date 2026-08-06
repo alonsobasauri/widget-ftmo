@@ -31,13 +31,28 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.FtmoWidget">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+
+        <!--
+            The launcher entry lives on an alias rather than on ConfigActivity so it
+            can be switched off at runtime without touching the activity itself,
+            which must stay enabled to serve APPWIDGET_CONFIGURE. See LauncherIcon.
+        -->
+        <activity-alias
+            android:name=".config.LauncherAlias"
+            android:targetActivity=".config.ConfigActivity"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <receiver
             android:name=".widget.FtmoWidgetReceiver"
