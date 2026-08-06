@@ -28,11 +28,11 @@ import com.basauri.ftmowidget.data.DayPoint
 import com.basauri.ftmowidget.data.Format
 
 /**
- * Days listed under Daily Summary, excluding today. The LazyColumn this layout
+ * Rows listed under Daily Summary, excluding today. The LazyColumn this layout
  * is built on renders through a collection adapter, so the row count is not
  * bound by the RemoteViews node budget that constrains the smaller layouts.
  */
-private const val DAILY_SUMMARY_DAYS = 14
+private const val DAILY_SUMMARY_DAYS = 15
 
 @Composable
 fun XLargeContent(state: WidgetState) = SingleAccountScaffold(state) { snapshot, staleNote, refreshing ->
@@ -43,8 +43,8 @@ fun XLargeContent(state: WidgetState) = SingleAccountScaffold(state) { snapshot,
 private fun XLargeBody(snapshot: AccountSnapshot, staleNote: String?, refreshing: Boolean) {
     // The latest day is already surfaced as "Today" in the header; drop it here so
     // the log shows the days leading up to today instead of repeating it.
-    // Two calendar weeks, so quiet days and weekends still occupy their row and
-    // the dates read as a continuous stretch rather than a filtered selection.
+    // Consecutive calendar days: quiet days and weekends keep their row, so the
+    // dates read as a continuous stretch rather than a filtered selection.
     val days = snapshot.days.sortedByDescending { it.date }.drop(1).take(DAILY_SUMMARY_DAYS)
     val hasTradeColumns = days.any { it.trades != null || it.lots != null }
 
