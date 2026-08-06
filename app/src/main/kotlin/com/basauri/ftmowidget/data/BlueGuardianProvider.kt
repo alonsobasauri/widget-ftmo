@@ -1,5 +1,6 @@
 package com.basauri.ftmowidget.data
 
+import java.io.IOException
 import kotlin.math.abs
 
 /**
@@ -31,10 +32,19 @@ object BlueGuardianProvider : Provider {
         "https://trader.blueguardian.com/shared/${identity.token}"
 
     override suspend fun fetch(identity: Identity): AccountSnapshot {
-        val shared = client.fetchShared(identity.token)
-        // The curve is a nice-to-have: a failure there shouldn't blank a widget
-        // that could still show equity and objectives.
-        val growth = runCatching { client.fetchDailyGrowth(identity.token) }.getOrDefault(emptyList())
+        val shared = retryOnIo { client.fetchShared(identity.token) }
+        // The curve is a nice-to-have: a failure there shouldn't cost a widget
+        // the equity and objectives it could still show. It gets its own retry
+        // because it is a second request, and losing only this one used to
+        // silently blank the trend chart and the daily table.
+        //
+        // Catching IOException rather than everything keeps a coroutine
+        // cancellation propagating instead of being mistaken for a dead curve.
+        val growth = try {
+            retryOnIo { client.fetchDailyGrowth(identity.token) }
+        } catch (e: IOException) {
+            emptyList()
+        }
         return shared.toSnapshot(growth)
     }
 }

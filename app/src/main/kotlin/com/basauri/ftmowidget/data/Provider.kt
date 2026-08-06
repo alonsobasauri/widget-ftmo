@@ -1,6 +1,8 @@
 package com.basauri.ftmowidget.data
 
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
+import java.io.IOException
 
 /**
  * What the widget needs to reach one account at one prop firm.
@@ -31,6 +33,31 @@ interface Provider {
 
     /** Fetches and normalizes. Throws on network or decode failure. */
     suspend fun fetch(identity: Identity): AccountSnapshot
+}
+
+/** Delay *after* each attempt; the trailing 0 means the last one doesn't wait. */
+internal val RETRY_DELAYS_MS = longArrayOf(700, 1_800, 0)
+
+/**
+ * Runs [block], retrying transport failures with a short backoff.
+ *
+ * Refreshes very often fire while the radio is still settling, and DNS then
+ * fails even though the device is reachable a moment later. OkHttp's
+ * `retryOnConnectionFailure` does not cover DNS, so this is where that gap is
+ * closed. Only [IOException] is caught, which also means a coroutine
+ * cancellation propagates instead of being swallowed as a failed attempt.
+ */
+internal suspend fun <T> retryOnIo(block: suspend () -> T): T {
+    var last: IOException? = null
+    for (index in RETRY_DELAYS_MS.indices) {
+        try {
+            return block()
+        } catch (e: IOException) {
+            last = e
+            RETRY_DELAYS_MS[index].takeIf { it > 0 }?.let { delay(it) }
+        }
+    }
+    throw last ?: IOException("Network failure")
 }
 
 object Providers {
