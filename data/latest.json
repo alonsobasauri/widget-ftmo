@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-10T19:10:57.741Z",
+  "updatedAt": "2026-08-10T20:56:35.047Z",
   "provider": "ftmo",
   "login": 531303305,
   "status": "ended",
@@ -14,7 +14,7 @@
   "maxLossLimit": null,
   "maxDailyLossLimit": -300,
   "minTradingDays": null,
-  "t": "2026-08-10T19:10:57.741Z",
+  "t": "2026-08-10T20:56:35.047Z",
   "equity": 8078.92,
   "balance": 8078.92,
   "todayPnl": -1509.38,
